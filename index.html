@@ -113,6 +113,7 @@
           <button id="rotLeft">Rotate ⟲</button>
           <button id="rotRight">Rotate ⟳</button>
           <button id="holdBtn">Hold</button>
+          <button id="placeBtn" class="good">Place</button>
           <button id="newBtn" class="primary">New Puzzle</button>
         </div>
       </div>
@@ -121,7 +122,7 @@
         <h2>Status</h2>
         <div id="status">Pick up the current piece and place it on the board.</div>
         <div class="tiny" style="margin-top:8px;">
-          Keyboard: <span class="accent">R</span>/<span class="accent">E</span> rotate, <span class="accent">H</span> hold, <span class="accent">N</span> new puzzle.
+          Keyboard: <span class="accent">Q</span>/<span class="accent">R</span>/<span class="accent">E</span> rotate, <span class="accent">H</span> hold, <span class="accent">Enter</span> place, <span class="accent">N</span> new puzzle.
         </div>
       </div>
 
@@ -132,7 +133,7 @@
 
       <div class="section tiny">
         <h2>Rules</h2>
-        Drag the current piece onto the grid. Click any placed piece to move it again. The hold slot stores one piece and can be swapped at any time.
+        Click any piece to select it. Drag a selected piece over the grid to snap it into position, rotate it if needed, then place it when you are happy with the fit. The hold slot stores one piece and can also take a placed piece.
       </div>
     </div>
   </div>
@@ -145,6 +146,7 @@
   const rotLeftBtn = document.getElementById('rotLeft');
   const rotRightBtn = document.getElementById('rotRight');
   const holdBtn = document.getElementById('holdBtn');
+  const placeBtn = document.getElementById('placeBtn');
   const newBtn = document.getElementById('newBtn');
 
   const BOARD = { x: 24, y: 24, cols: 8, rows: 8, cell: 54 };
@@ -179,9 +181,7 @@
     currentId: null,
     selectedId: null,
     draggingId: null,
-    dragOffset: { x: 0, y: 0 },
     preview: null,
-    hoverPos: null,
     solved: false,
     sparkle: 0,
   };
@@ -212,44 +212,9 @@
   }
 
   function pieceBounds(piece) {
-    const cells = piece.cells;
-    const maxX = Math.max(...cells.map(c => c[0]));
-    const maxY = Math.max(...cells.map(c => c[1]));
+    const maxX = Math.max(...piece.cells.map(c => c[0]));
+    const maxY = Math.max(...piece.cells.map(c => c[1]));
     return { w: maxX + 1, h: maxY + 1 };
-  }
-
-  function buildPuzzle() {
-    state.pieces = [];
-    state.queue = [];
-    state.holdId = null;
-    state.currentId = null;
-    state.selectedId = null;
-    state.draggingId = null;
-    state.preview = null;
-    state.hoverPos = null;
-    state.solved = false;
-    state.sparkle = 0;
-
-    const layout = shuffle(PUZZLES)[0];
-    const order = shuffle([...layout.keys()]);
-
-    layout.forEach(([type, rot], i) => {
-      const piece = {
-        id: i,
-        type,
-        rot,
-        cells: shapeFor(type, rot),
-        gx: null,
-        gy: null,
-        placed: false,
-        color: COLORS[i % COLORS.length],
-      };
-      state.pieces.push(piece);
-    });
-
-    state.queue = order;
-    state.currentId = state.queue.shift();
-    updateStatus('Pick up the current piece and place it on the board.');
   }
 
   function getPiece(id) {
@@ -281,79 +246,25 @@
     return true;
   }
 
-  function placePiece(piece, gx, gy) {
-    if (!canPlace(piece, gx, gy, piece.id)) return false;
-    piece.gx = gx;
-    piece.gy = gy;
-    piece.placed = true;
-
-    if (state.currentId === piece.id) {
-      if (state.queue.length) state.currentId = state.queue.shift();
-      else if (state.holdId != null) state.currentId = state.holdId, state.holdId = null;
-      else state.currentId = null;
-    }
-    state.selectedId = piece.id;
-
-    checkSolved();
-    updateStatus(state.solved ? 'Solved. Nice.' : 'Piece placed. You can still click it later to move it again.');
-    return true;
+  function updateStatus(msg, warn = false) {
+    statusEl.textContent = msg;
+    statusEl.className = warn ? 'warn' : (state.solved ? 'success' : '');
   }
 
-  function removeFromBoard(piece) {
-    piece.placed = false;
-    piece.gx = null;
-    piece.gy = null;
-    state.solved = false;
+  function checkSolved() {
+    const occ = occupiedMap();
+    state.solved = occ.size === BOARD.cols * BOARD.rows;
+    if (state.solved) {
+      state.sparkle = 120;
+      updateStatus('Solved. Nice. Start a new puzzle or keep rearranging if you want.');
+    }
   }
 
-  function rotatePiece(dir) {
-    const piece = getPiece(state.selectedId ?? state.currentId ?? state.draggingId);
-    if (!piece) return;
-    const oldCells = piece.cells.map(c => [...c]);
-    const oldRot = piece.rot;
-    piece.rot = ((piece.rot + dir) % 4 + 4) % 4;
-    piece.cells = shapeFor(piece.type, piece.rot);
-
-    if (piece.placed) {
-      const ok = canPlace(piece, piece.gx, piece.gy, piece.id);
-      if (!ok) {
-        piece.rot = oldRot;
-        piece.cells = oldCells;
-        updateStatus('No room to rotate there. Move it first.', true);
-        return;
-      }
-    }
-    updateStatus('Rotated piece.');
-  }
-
-  function holdCurrent() {
-    if (state.currentId == null) {
-      updateStatus('There is no current piece to hold.', true);
-      return;
-    }
-    const current = getPiece(state.currentId);
-    if (current.placed) {
-      updateStatus('Placed pieces do not go into hold. Click it to move it instead.', true);
-      return;
-    }
-    const oldHold = state.holdId;
-    state.holdId = current.id;
-    state.selectedId = null;
-    if (oldHold != null) {
-      state.currentId = oldHold;
-    } else if (state.queue.length) {
-      state.currentId = state.queue.shift();
-    } else {
-      state.currentId = null;
-    }
-    updateStatus('Swapped hold piece.');
-  }
-
-  function boardPixelToGrid(px, py) {
-    return {
-      gx: Math.floor((px - BOARD.x) / BOARD.cell),
-      gy: Math.floor((py - BOARD.y) / BOARD.cell),
-    };
+  function pieceHome(piece) {
+    if (piece.id === state.currentId) return 'current';
+    if (piece.id === state.holdId) return 'hold';
+    if (piece.placed) return 'board';
+    return 'queue';
   }
 
   function pieceScreenRect(piece, where = 'current') {
@@ -366,73 +277,231 @@
     return { x: px, y: py, size };
   }
 
-  function pointInRect(x, y, r) {
-    return x >= r.x && y >= r.y && x <= r.x + r.w && y <= r.y + r.h;
-  }
-
-  function pieceHitTest(piece, x, y, source) {
-    let cellsPixels = [];
+  function piecePixelCells(piece, source) {
     if (source === 'board' && piece.placed) {
-      cellsPixels = piece.cells.map(([dx, dy]) => ({
+      return piece.cells.map(([dx, dy]) => ({
         x: BOARD.x + (piece.gx + dx) * BOARD.cell,
         y: BOARD.y + (piece.gy + dy) * BOARD.cell,
         s: BOARD.cell,
       }));
-    } else if (source === 'current') {
-      const rect = pieceScreenRect(piece, 'current');
-      cellsPixels = piece.cells.map(([dx, dy]) => ({
-        x: rect.x + dx * rect.size,
-        y: rect.y + dy * rect.size,
-        s: rect.size,
-      }));
-    } else if (source === 'hold') {
-      const rect = pieceScreenRect(piece, 'hold');
-      cellsPixels = piece.cells.map(([dx, dy]) => ({
+    }
+    if (source === 'current' || source === 'hold') {
+      const rect = pieceScreenRect(piece, source);
+      return piece.cells.map(([dx, dy]) => ({
         x: rect.x + dx * rect.size,
         y: rect.y + dy * rect.size,
         s: rect.size,
       }));
     }
-    return cellsPixels.some(c => x >= c.x && y >= c.y && x <= c.x + c.s && y <= c.y + c.s);
+    return [];
   }
 
-  function updateStatus(msg, warn = false) {
-    statusEl.textContent = msg;
-    statusEl.className = warn ? 'warn' : (state.solved ? 'success' : '');
+  function pieceHitTest(piece, x, y, source) {
+    return piecePixelCells(piece, source).some(c => x >= c.x && y >= c.y && x <= c.x + c.s && y <= c.y + c.s);
   }
 
-  function checkSolved() {
-    const occ = occupiedMap();
-    state.solved = occ.size === BOARD.cols * BOARD.rows;
-    if (state.solved) {
-      state.sparkle = 120;
-      updateStatus('Solved. Nice. Start a new puzzle or rearrange pieces anyway.');
+  function boardPointToGrid(x, y) {
+    return {
+      gx: Math.round((x - BOARD.x) / BOARD.cell),
+      gy: Math.round((y - BOARD.y) / BOARD.cell),
+    };
+  }
+
+  function createPreviewForPiece(piece) {
+    if (piece.placed) {
+      state.preview = { id: piece.id, gx: piece.gx, gy: piece.gy, valid: canPlace(piece, piece.gx, piece.gy, piece.id) };
+      return;
+    }
+    if (!state.preview || state.preview.id !== piece.id) {
+      state.preview = { id: piece.id, gx: 0, gy: 0, valid: canPlace(piece, 0, 0, piece.id) };
     }
   }
 
-  function startDrag(piece, pointerX, pointerY, fromBoard) {
-    state.draggingId = piece.id;
-    if (fromBoard && piece.placed) {
-      state.dragOffset.x = pointerX - (BOARD.x + piece.gx * BOARD.cell);
-      state.dragOffset.y = pointerY - (BOARD.y + piece.gy * BOARD.cell);
-      state.selectedId = piece.id;
-    } else {
-      state.dragOffset.x = 0;
-      state.dragOffset.y = 0;
+  function selectPiece(piece) {
+    state.selectedId = piece.id;
+    state.draggingId = null;
+    createPreviewForPiece(piece);
+    const origin = pieceHome(piece);
+    if (origin === 'board') updateStatus('Piece selected. Drag it over the grid, rotate it, then press Place.');
+    else if (origin === 'hold') updateStatus('Held piece selected. Drag it onto the grid, or hold again to swap it out.');
+    else updateStatus('Piece selected. Drag it over the grid, rotate it, then press Place.');
+  }
+
+  function removeFromBoard(piece) {
+    piece.placed = false;
+    piece.gx = null;
+    piece.gy = null;
+    state.solved = false;
+  }
+
+  function moveSelectionFromHoldToCurrent(piece) {
+    if (state.currentId == null) {
       state.currentId = piece.id;
-      state.selectedId = null;
+      state.holdId = null;
+      return;
     }
+    if (state.currentId === piece.id) return;
+    const other = state.currentId;
+    state.currentId = piece.id;
+    state.holdId = other;
+  }
+
+  function placeSelected() {
+    const piece = getPiece(state.selectedId);
+    if (!piece || !state.preview || state.preview.id !== piece.id) {
+      updateStatus('Select a piece first.', true);
+      return;
+    }
+    const { gx, gy, valid } = state.preview;
+    if (!valid) {
+      updateStatus('That position does not fit yet. Rotate or move the piece first.', true);
+      return;
+    }
+
+    if (piece.id === state.holdId) state.holdId = null;
+    if (piece.id === state.currentId) {
+      if (state.queue.length) state.currentId = state.queue.shift();
+      else state.currentId = null;
+    }
+
+    piece.gx = gx;
+    piece.gy = gy;
+    piece.placed = true;
+    state.selectedId = piece.id;
+    state.preview = { id: piece.id, gx, gy, valid: true };
+    checkSolved();
+    if (!state.solved) updateStatus('Piece placed. You can still click it to pick a new spot or put it into hold.');
+  }
+
+  function rotatePiece(dir) {
+    const piece = getPiece(state.selectedId ?? state.currentId);
+    if (!piece) return;
+    const oldRot = piece.rot;
+    piece.rot = ((piece.rot + dir) % 4 + 4) % 4;
+    piece.cells = shapeFor(piece.type, piece.rot);
+
+    if (state.selectedId === piece.id) {
+      const gx = state.preview?.id === piece.id ? state.preview.gx : (piece.placed ? piece.gx : 0);
+      const gy = state.preview?.id === piece.id ? state.preview.gy : (piece.placed ? piece.gy : 0);
+      state.preview = { id: piece.id, gx, gy, valid: canPlace(piece, gx, gy, piece.id) };
+    } else if (piece.placed && !canPlace(piece, piece.gx, piece.gy, piece.id)) {
+      piece.rot = oldRot;
+      piece.cells = shapeFor(piece.type, piece.rot);
+      updateStatus('No room to rotate there. Move it to a different preview position first.', true);
+      return;
+    }
+
+    updateStatus('Rotated piece.');
+  }
+
+  function holdCurrent() {
+    const piece = getPiece(state.selectedId ?? state.currentId);
+    if (!piece) {
+      updateStatus('There is no piece selected to hold.', true);
+      return;
+    }
+
+    if (piece.placed) removeFromBoard(piece);
+
+    if (piece.id === state.holdId) {
+      moveSelectionFromHoldToCurrent(piece);
+      state.selectedId = state.currentId;
+      createPreviewForPiece(piece);
+      updateStatus('Swapped held piece into play.');
+      return;
+    }
+
+    const oldHold = state.holdId;
+    state.holdId = piece.id;
+
+    if (piece.id === state.currentId) {
+      if (oldHold != null) {
+        state.currentId = oldHold;
+        state.selectedId = oldHold;
+        createPreviewForPiece(getPiece(oldHold));
+      } else if (state.queue.length) {
+        state.currentId = state.queue.shift();
+        state.selectedId = state.currentId;
+        createPreviewForPiece(getPiece(state.currentId));
+      } else {
+        state.currentId = null;
+        state.selectedId = piece.id;
+        createPreviewForPiece(piece);
+      }
+    } else {
+      if (oldHold != null && oldHold !== piece.id) {
+        state.currentId = oldHold;
+        state.selectedId = oldHold;
+        createPreviewForPiece(getPiece(oldHold));
+      } else if (state.currentId != null) {
+        state.selectedId = state.currentId;
+        createPreviewForPiece(getPiece(state.currentId));
+      } else {
+        state.currentId = null;
+        state.selectedId = piece.id;
+        createPreviewForPiece(piece);
+      }
+    }
+
+    updateStatus('Moved piece into hold.');
+  }
+
+  function buildPuzzle() {
+    state.pieces = [];
+    state.queue = [];
+    state.holdId = null;
+    state.currentId = null;
+    state.selectedId = null;
+    state.draggingId = null;
+    state.preview = null;
+    state.solved = false;
+    state.sparkle = 0;
+
+    const layout = shuffle(PUZZLES)[0];
+    const order = shuffle([...layout.keys()]);
+
+    layout.forEach(([type, rot], i) => {
+      state.pieces.push({
+        id: i,
+        type,
+        rot,
+        cells: shapeFor(type, rot),
+        gx: null,
+        gy: null,
+        placed: false,
+        color: COLORS[i % COLORS.length],
+      });
+    });
+
+    state.queue = order;
+    state.currentId = state.queue.shift();
+    state.selectedId = state.currentId;
+    createPreviewForPiece(getPiece(state.currentId));
+    updateStatus('Click or drag the selected piece. Snap it over the grid, rotate it if needed, then press Place.');
+  }
+
+  function canvasPoint(ev) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (ev.clientX - rect.left) * (canvas.width / rect.width),
+      y: (ev.clientY - rect.top) * (canvas.height / rect.height),
+    };
+  }
+
+  function beginDragging(piece) {
+    state.selectedId = piece.id;
+    state.draggingId = piece.id;
+    createPreviewForPiece(piece);
   }
 
   function handlePointerDown(ev) {
-    const rect = canvas.getBoundingClientRect();
-    const x = (ev.clientX - rect.left) * (canvas.width / rect.width);
-    const y = (ev.clientY - rect.top) * (canvas.height / rect.height);
+    const { x, y } = canvasPoint(ev);
 
     for (let i = state.pieces.length - 1; i >= 0; i--) {
       const piece = state.pieces[i];
       if (piece.placed && pieceHitTest(piece, x, y, 'board')) {
-        startDrag(piece, x, y, true);
+        selectPiece(piece);
+        beginDragging(piece);
         return;
       }
     }
@@ -440,7 +509,8 @@
     if (state.currentId != null) {
       const current = getPiece(state.currentId);
       if (current && pieceHitTest(current, x, y, 'current')) {
-        startDrag(current, x, y, false);
+        selectPiece(current);
+        beginDragging(current);
         return;
       }
     }
@@ -448,47 +518,34 @@
     if (state.holdId != null) {
       const held = getPiece(state.holdId);
       if (held && pieceHitTest(held, x, y, 'hold')) {
-        const oldCurrent = state.currentId;
-        if (oldCurrent != null) {
-          state.currentId = held.id;
-          state.holdId = oldCurrent;
-        } else {
-          state.currentId = held.id;
-          state.holdId = null;
-        }
-        state.selectedId = null;
-        updateStatus('Swapped held piece into play.');
+        selectPiece(held);
+        beginDragging(held);
         return;
       }
+    }
+
+    if (state.selectedId != null && x >= BOARD.x && y >= BOARD.y && x <= BOARD.x + BOARD.cols * BOARD.cell && y <= BOARD.y + BOARD.rows * BOARD.cell) {
+      placeSelected();
+      return;
     }
   }
 
   function handlePointerMove(ev) {
-    const rect = canvas.getBoundingClientRect();
-    const x = (ev.clientX - rect.left) * (canvas.width / rect.width);
-    const y = (ev.clientY - rect.top) * (canvas.height / rect.height);
-    const id = state.draggingId;
-    if (id == null) return;
-    const piece = getPiece(id);
+    if (state.draggingId == null) return;
+    const piece = getPiece(state.draggingId);
     if (!piece) return;
-
-    const gx = Math.round((x - state.dragOffset.x - BOARD.x) / BOARD.cell);
-    const gy = Math.round((y - state.dragOffset.y - BOARD.y) / BOARD.cell);
-    state.preview = { id, gx, gy, valid: canPlace(piece, gx, gy, piece.id) };
+    const { x, y } = canvasPoint(ev);
+    const { gx, gy } = boardPointToGrid(x, y);
+    state.preview = { id: piece.id, gx, gy, valid: canPlace(piece, gx, gy, piece.id) };
   }
 
   function handlePointerUp() {
-    const id = state.draggingId;
-    if (id == null) return;
-    const piece = getPiece(id);
-    if (piece && state.preview && state.preview.id === id && state.preview.valid) {
-      placePiece(piece, state.preview.gx, state.preview.gy);
-    } else if (piece) {
-      if (!piece.placed) updateStatus('That spot does not fit. Try another location.', true);
-      else updateStatus('Move canceled.');
-    }
+    if (state.draggingId == null) return;
     state.draggingId = null;
-    state.preview = null;
+    const piece = getPiece(state.selectedId);
+    if (!piece) return;
+    if (!state.preview || state.preview.id !== piece.id) createPreviewForPiece(piece);
+    updateStatus(state.preview?.valid ? 'Preview snapped. Rotate it or press Place when ready.' : 'Preview snapped, but that position does not fit yet.', !state.preview?.valid);
   }
 
   function drawRoundedRect(x, y, w, h, r, fill, stroke) {
@@ -503,19 +560,23 @@
     if (stroke) { ctx.strokeStyle = stroke; ctx.stroke(); }
   }
 
-  function drawCell(x, y, size, color, alpha = 1, ghost = false) {
+  function drawCell(x, y, size, color, alpha = 1, ghost = false, selected = false, outline = null) {
     ctx.save();
     ctx.globalAlpha = alpha;
-    drawRoundedRect(x + 3, y + 3, size - 6, size - 6, 11, color, ghost ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.12)');
-    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    const stroke = outline || (selected ? 'rgba(255,255,255,0.75)' : (ghost ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.12)'));
+    drawRoundedRect(x + 3, y + 3, size - 6, size - 6, 11, color, stroke);
+    if (outline) {
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = outline;
+      ctx.strokeRect(x + 5.5, y + 5.5, size - 11, size - 11);
+      ctx.lineWidth = 1;
+    }
     drawRoundedRect(x + 8, y + 8, size - 16, 10, 5, 'rgba(255,255,255,0.15)');
     ctx.restore();
   }
 
-  function drawPieceAt(piece, originX, originY, cellSize, alpha = 1, ghost = false) {
-    for (const [dx, dy] of piece.cells) {
-      drawCell(originX + dx * cellSize, originY + dy * cellSize, cellSize, piece.color, alpha, ghost);
-    }
+  function drawPieceAt(piece, originX, originY, cellSize, alpha = 1, ghost = false, selected = false, outline = null) {
+    for (const [dx, dy] of piece.cells) drawCell(originX + dx * cellSize, originY + dy * cellSize, cellSize, piece.color, alpha, ghost, selected, outline);
   }
 
   function drawBoard() {
@@ -530,22 +591,26 @@
     }
 
     for (const piece of state.pieces) {
-      if (piece.placed && piece.id !== state.draggingId) {
-        drawPieceAt(piece, BOARD.x + piece.gx * BOARD.cell, BOARD.y + piece.gy * BOARD.cell, BOARD.cell);
+      if (piece.placed && (!state.preview || state.preview.id !== piece.id || state.draggingId == null)) {
+        const selected = piece.id === state.selectedId && !state.draggingId;
+        drawPieceAt(piece, BOARD.x + piece.gx * BOARD.cell, BOARD.y + piece.gy * BOARD.cell, BOARD.cell, 1, false, selected);
       }
     }
 
     if (state.preview) {
       const piece = getPiece(state.preview.id);
       if (piece) {
-        drawPieceAt(piece, BOARD.x + state.preview.gx * BOARD.cell, BOARD.y + state.preview.gy * BOARD.cell, BOARD.cell, 0.52, true);
+        const previewOutline = state.preview.valid ? 'rgba(34,197,94,0.95)' : 'rgba(239,68,68,0.95)';
+        drawPieceAt(piece, BOARD.x + state.preview.gx * BOARD.cell, BOARD.y + state.preview.gy * BOARD.cell, BOARD.cell, 0.82, true, piece.id === state.selectedId, previewOutline);
         if (!state.preview.valid) {
           ctx.save();
-          ctx.globalAlpha = 0.22;
-          ctx.fillStyle = '#ef4444';
+          ctx.globalAlpha = 0.18;
           for (const [dx, dy] of piece.cells) {
-            const px = BOARD.x + (state.preview.gx + dx) * BOARD.cell;
-            const py = BOARD.y + (state.preview.gy + dy) * BOARD.cell;
+            const x = state.preview.gx + dx;
+            const y = state.preview.gy + dy;
+            if (!isCellInsideBoard(x, y)) continue;
+            const px = BOARD.x + x * BOARD.cell;
+            const py = BOARD.y + y * BOARD.cell;
             drawRoundedRect(px + 6, py + 6, BOARD.cell - 12, BOARD.cell - 12, 9, '#ef4444');
           }
           ctx.restore();
@@ -567,15 +632,15 @@
   }
 
   function drawSidePanels() {
-    drawBox(CURRENT_BOX, 'Current Piece');
-    drawBox(HOLD_BOX, 'Hold Slot', 'Click Hold or click the held piece to swap it in.');
+    drawBox(CURRENT_BOX, 'Current Piece', state.selectedId === state.currentId ? 'Selected' : '');
+    drawBox(HOLD_BOX, 'Hold Slot', 'Hold works on loose or placed pieces now.');
     drawBox(QUEUE_BOX, 'Incoming', `${state.queue.length} piece${state.queue.length === 1 ? '' : 's'} left after this one.`);
-    drawBox(MSG_BOX, 'Tips', 'Placed pieces are never locked. Pick them back up any time.');
+    drawBox(MSG_BOX, 'Tips', 'Selection is separate from placement now.');
 
     const current = getPiece(state.currentId);
-    if (current && state.draggingId !== current.id) {
+    if (current && (!state.selectedId || current.id !== state.selectedId || (state.preview && state.preview.id !== current.id))) {
       const rect = pieceScreenRect(current, 'current');
-      drawPieceAt(current, rect.x, rect.y, rect.size);
+      drawPieceAt(current, rect.x, rect.y, rect.size, 1, false, current.id === state.selectedId);
     } else if (!current) {
       ctx.fillStyle = '#9fb0c2';
       ctx.font = '15px Inter, system-ui, sans-serif';
@@ -584,8 +649,10 @@
 
     if (state.holdId != null) {
       const held = getPiece(state.holdId);
-      const rect = pieceScreenRect(held, 'hold');
-      drawPieceAt(held, rect.x, rect.y, rect.size, 0.95);
+      if (!state.selectedId || held.id !== state.selectedId || (state.preview && state.preview.id !== held.id)) {
+        const rect = pieceScreenRect(held, 'hold');
+        drawPieceAt(held, rect.x, rect.y, rect.size, 0.95, false, held.id === state.selectedId);
+      }
     } else {
       ctx.fillStyle = '#9fb0c2';
       ctx.font = '15px Inter, system-ui, sans-serif';
@@ -608,21 +675,14 @@
     });
 
     const bullets = [
-      'Drag from the Current Piece box onto the board.',
-      'Click any placed piece to move it again.',
-      'Use Hold whenever you want to park one piece.',
-      'Fill all 64 cells to win.'
+      'Click any piece to select it.',
+      'Drag the selected piece to snap a preview onto the grid.',
+      'Rotate first, then press Place when the fit looks good.',
+      'Hold can store a placed piece too.'
     ];
     ctx.fillStyle = '#cbd5e1';
     ctx.font = '15px Inter, system-ui, sans-serif';
     bullets.forEach((t, i) => ctx.fillText(`• ${t}`, MSG_BOX.x + 16, MSG_BOX.y + 64 + i * 28));
-  }
-
-  function drawDraggedPiece() {
-    if (state.draggingId == null || !state.preview) return;
-    const piece = getPiece(state.draggingId);
-    if (!piece) return;
-    drawPieceAt(piece, BOARD.x + state.preview.gx * BOARD.cell, BOARD.y + state.preview.gy * BOARD.cell, BOARD.cell, 0.86, true);
   }
 
   function drawSolvedGlow() {
@@ -631,7 +691,6 @@
     const pulse = 0.25 + 0.15 * Math.sin((120 - state.sparkle) * 0.18);
     ctx.save();
     ctx.globalAlpha = pulse;
-    ctx.strokeStyle = '#86efac';
     ctx.lineWidth = 6;
     drawRoundedRect(BOARD.x - 12, BOARD.y - 12, BOARD.cols * BOARD.cell + 24, BOARD.rows * BOARD.cell + 24, 18, null, '#86efac');
     ctx.restore();
@@ -641,7 +700,6 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawBoard();
     drawSidePanels();
-    drawDraggedPiece();
     drawSolvedGlow();
     requestAnimationFrame(render);
   }
@@ -649,6 +707,7 @@
   rotLeftBtn.addEventListener('click', () => rotatePiece(-1));
   rotRightBtn.addEventListener('click', () => rotatePiece(1));
   holdBtn.addEventListener('click', holdCurrent);
+  placeBtn.addEventListener('click', placeSelected);
   newBtn.addEventListener('click', buildPuzzle);
 
   window.addEventListener('keydown', (e) => {
@@ -657,6 +716,10 @@
     else if (k === 'e') rotatePiece(1);
     else if (k === 'h') holdCurrent();
     else if (k === 'n') buildPuzzle();
+    else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      placeSelected();
+    }
   });
 
   canvas.addEventListener('pointerdown', handlePointerDown);
