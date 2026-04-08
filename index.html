@@ -58,6 +58,7 @@
   .subtitle, .tiny { color: var(--muted); }
   .tiny { font-size: 0.92rem; line-height: 1.35; }
   .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .row button { flex: 1 1 140px; }
   button {
     appearance: none;
     border: 0;
@@ -113,6 +114,7 @@
           <button id="rotLeft">Rotate ⟲</button>
           <button id="rotRight">Rotate ⟳</button>
           <button id="holdBtn">Hold</button>
+          <button id="placeBtn" class="good">Place</button>
           <button id="newBtn" class="primary">New Puzzle</button>
         </div>
       </div>
@@ -121,7 +123,7 @@
         <h2>Status</h2>
         <div id="status">Pick up the current piece and place it on the board.</div>
         <div class="tiny" style="margin-top:8px;">
-          Keyboard: <span class="accent">R</span>/<span class="accent">E</span> rotate, <span class="accent">H</span> hold, <span class="accent">N</span> new puzzle.
+          Keyboard: <span class="accent">Q</span>/<span class="accent">R</span>/<span class="accent">E</span> rotate, <span class="accent">H</span> hold, <span class="accent">Enter</span> place, <span class="accent">N</span> new puzzle.
         </div>
       </div>
 
@@ -858,7 +860,7 @@
   rotLeftBtn.addEventListener('click', () => rotatePiece(-1));
   rotRightBtn.addEventListener('click', () => rotatePiece(1));
   holdBtn.addEventListener('click', holdCurrent);
-  placeBtn.addEventListener('click', placeSelected);
+  if (placeBtn) placeBtn.addEventListener('click', placeSelected);
   newBtn.addEventListener('click', buildPuzzle);
 
   window.addEventListener('keydown', (e) => {
