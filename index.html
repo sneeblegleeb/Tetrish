@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>Fill Grid</title>
+<title>Tetrish</title>
 <style>
   :root {
     --bg: #111418;
@@ -140,9 +140,9 @@
 <body>
   <div class="wrap">
     <div class="panel">
-      <h1>Fill Grid</h1>
+      <h1>Tetrish</h1>
       <div class="subtitle">A no-timer packing puzzle. Fill every square.</div>
-      <canvas id="game" width="728" height="860" aria-label="Fill Grid game canvas"></canvas>
+      <canvas id="game" width="728" height="860" aria-label="Tetrish game canvas"></canvas>
     </div>
 
     <div class="side">
@@ -172,7 +172,7 @@
 
       <div class="section tiny">
         <h2>Rules</h2>
-        Tap any piece to select it. Drag a selected piece onto the grid. A green outline fits. A red outline does not. The hold slot stores one piece and can be swapped at any time.
+        Tap any piece to select it. Drag a selected piece onto the grid. A green outline fits. A red outline does not. Dragging off the board cancels the move. The hold slot stores one piece and can be swapped at any time.
       </div>
     </div>
   </div>
@@ -394,9 +394,12 @@
 
   function selectPiece(piece, fromTap = false) {
     state.selectedId = piece.id;
-    if (state.draggingId !== piece.id) createPreviewForPiece(piece);
 
     const origin = pieceHome(piece);
+    if (state.draggingId !== piece.id) {
+      if (origin === 'board') createPreviewForPiece(piece);
+      else if (state.preview && state.preview.id === piece.id && !piece.placed) state.preview = null;
+    }
     if (fromTap) {
       if (origin === 'board') updateStatus('Piece selected. Drag it to move it, or tap a valid preview to place.');
       else if (origin === 'hold') updateStatus('Held piece selected. Drag it onto the board or press Hold to swap it.');
@@ -425,6 +428,8 @@
       return;
     }
 
+    const wasCurrent = state.currentId === piece.id;
+
     piece.gx = state.preview.gx;
     piece.gy = state.preview.gy;
     piece.placed = true;
@@ -433,15 +438,28 @@
     moveCurrentForward(piece.id);
 
     clearPointerState();
-    state.preview = {
-      id: piece.id,
-      gx: piece.gx,
-      gy: piece.gy,
-      valid: true,
-    };
+
+    if (wasCurrent && state.currentId != null) {
+      state.selectedId = state.currentId;
+      state.preview = null;
+    } else {
+      state.selectedId = piece.id;
+      state.preview = {
+        id: piece.id,
+        gx: piece.gx,
+        gy: piece.gy,
+        valid: true,
+      };
+    }
 
     checkSolved();
-    if (!state.solved) updateStatus('Piece placed. Tap it again any time to move it.');
+    if (!state.solved) {
+      if (wasCurrent && state.currentId != null) updateStatus('Piece placed. The next piece is ready.');
+      else updateStatus('Piece placed. Tap it again any time to move it.');
+    } else if (state.currentId == null && state.selectedId == null) {
+      state.selectedId = piece.id;
+      state.preview = { id: piece.id, gx: piece.gx, gy: piece.gy, valid: true };
+    }
   }
 
   function rotatePiece(dir) {
@@ -477,7 +495,8 @@
       piece.gy = clamped.gy;
       createPreviewForPiece(piece, clamped);
     } else {
-      createPreviewForPiece(piece);
+      if (state.preview && state.preview.id === piece.id) createPreviewForPiece(piece);
+      else state.preview = null;
     }
 
     updateStatus('Rotated piece.');
@@ -485,6 +504,7 @@
 
   function sendPieceToHold(piece) {
     const previousHold = state.holdId;
+    state.preview = null;
     state.holdId = piece.id;
 
     if (piece.id === state.currentId) {
@@ -538,6 +558,12 @@
     }
 
     sendPieceToHold(piece);
+    if (state.selectedId != null) {
+      const selected = getPiece(state.selectedId);
+      if (selected && !selected.placed && state.preview && state.preview.id !== selected.id) {
+        state.preview = null;
+      }
+    }
     updateStatus('Moved piece into hold.');
   }
 
@@ -673,8 +699,17 @@
 
   function tapBoardBehavior(x, y) {
     const piece = getPiece(state.selectedId);
-    if (!piece || !state.preview || state.preview.id !== piece.id) return false;
+    if (!piece) return false;
     if (!pointInRect(x, y, boardRect())) return false;
+
+    if (!state.preview || state.preview.id !== piece.id) {
+      const b = pieceBounds(piece);
+      const gx = Math.round((x - BOARD.x) / BOARD.cell) - Math.floor(b.w / 2);
+      const gy = Math.round((y - BOARD.y) / BOARD.cell) - Math.floor(b.h / 2);
+      createPreviewForPiece(piece, clampPreviewToBoard(piece, gx, gy));
+      updateStatus(state.preview.valid ? 'Preview set. Tap again to place.' : 'Preview set, but it does not fit yet.', !state.preview.valid);
+      return true;
+    }
 
     const sameSpot = state.preview.valid &&
       piece.placed &&
@@ -712,7 +747,7 @@
 
     if (pointInRect(point.x, point.y, boardRect())) {
       const piece = getPiece(state.selectedId);
-      if (piece) {
+      if (piece && state.preview && state.preview.id === piece.id) {
         updatePreviewFromPointer(point.x, point.y, state.activePointerType);
         updateStatus(state.preview && state.preview.valid ? 'Preview moved. Tap again to place or drag more.' : 'Preview moved, but it does not fit yet.', !(state.preview && state.preview.valid));
         return;
@@ -720,9 +755,10 @@
     }
 
     state.selectedId = state.currentId ?? state.holdId ?? null;
+    state.preview = null;
     if (state.selectedId != null) {
-      const piece = getPiece(state.selectedId);
-      if (piece) createPreviewForPiece(piece);
+      const nextPiece = getPiece(state.selectedId);
+      if (nextPiece && nextPiece.placed) createPreviewForPiece(nextPiece);
     }
   }
 
@@ -749,11 +785,33 @@
 
     const wasDragging = state.dragStarted && state.draggingId != null;
     const pointerType = state.activePointerType;
+    const releasePoint = ev ? canvasPoint(ev) : null;
 
     if (wasDragging) {
       const piece = getPiece(state.draggingId);
+      const origin = state.dragOrigin ? { ...state.dragOrigin } : null;
+      const releasedOnBoard = !!(releasePoint && pointInRect(releasePoint.x, releasePoint.y, boardRect()));
+
       clearPointerState();
       if (!piece) return;
+
+      if (!releasedOnBoard) {
+        if (origin && origin.wasPlaced) {
+          piece.placed = true;
+          piece.gx = origin.gx;
+          piece.gy = origin.gy;
+          state.selectedId = piece.id;
+          state.preview = { id: piece.id, gx: piece.gx, gy: piece.gy, valid: true };
+          updateStatus('Move canceled. Piece returned to its previous spot.');
+          return;
+        } else {
+          state.selectedId = piece.id;
+          state.preview = null;
+          updateStatus('Move canceled. Drag the selected piece onto the board.');
+          return;
+        }
+      }
+
       if (!state.preview || state.preview.id !== piece.id) createPreviewForPiece(piece);
       updateStatus(
         state.preview.valid
@@ -831,9 +889,11 @@
 
     for (const piece of state.pieces) {
       const showingAsPreview = state.preview && state.preview.id === piece.id;
+      const previewMatchesPlaced = showingAsPreview && piece.placed &&
+        state.preview.gx === piece.gx && state.preview.gy === piece.gy;
       if (!piece.placed) continue;
       if (state.draggingId === piece.id) continue;
-      if (showingAsPreview && piece.id === state.selectedId) continue;
+      if (showingAsPreview && piece.id === state.selectedId && !previewMatchesPlaced) continue;
 
       drawPieceAt(piece, BOARD.x + piece.gx * BOARD.cell, BOARD.y + piece.gy * BOARD.cell, BOARD.cell, {
         selected: piece.id === state.selectedId,
@@ -1048,8 +1108,8 @@
     state.queue = order;
     state.currentId = state.queue.shift();
     state.selectedId = state.currentId;
-    if (state.currentId != null) createPreviewForPiece(getPiece(state.currentId));
-    updateStatus('Pick a piece up and fill the board.');
+    state.preview = null;
+    updateStatus('Pick up a piece and fill the board.');
   }
 
   buildPuzzle();
