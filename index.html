@@ -7,207 +7,244 @@
 <style>
   :root {
     --bg: #111418;
-    --panel: #1a2027;
-    --panel2: #212a33;
+    --panel: #171d24;
+    --panel2: #202833;
+    --panel3: #0f141b;
     --text: #eef3f8;
     --muted: #9fb0c2;
     --accent: #7dd3fc;
     --good: #86efac;
     --warn: #fca5a5;
+    --blue: #2563eb;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { overscroll-behavior: none; }
   body {
     margin: 0;
-    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-    background: radial-gradient(circle at top, #18202a 0%, #0e1116 60%);
-    color: var(--text);
     min-height: 100vh;
     display: flex;
-    align-items: center;
     justify-content: center;
-    padding: 20px;
+    align-items: flex-start;
+    padding: 16px 16px calc(100px + env(safe-area-inset-bottom));
+    background: radial-gradient(circle at top, #18202a 0%, #0e1116 60%);
+    color: var(--text);
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
   }
-  .wrap {
-    width: min(1180px, 100%);
+  .app {
+    width: min(980px, 100%);
     display: grid;
-    grid-template-columns: minmax(0, 760px) minmax(300px, 360px);
-    gap: 18px;
+    gap: 14px;
   }
-  .panel, .side {
-    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  .panel, .controls, .status, .menu-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015));
     border: 1px solid rgba(255,255,255,0.08);
     border-radius: 18px;
     box-shadow: 0 14px 40px rgba(0,0,0,0.35);
   }
-  .panel { padding: 16px; }
-  .side { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
-  canvas {
-    width: 100%;
-    max-width: 728px;
-    display: block;
-    background: linear-gradient(180deg, #10151b, #0c1015);
-    border-radius: 14px;
-    border: 1px solid rgba(255,255,255,0.06);
-    touch-action: none;
+  .panel { padding: 14px; }
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: end;
   }
   h1 {
-    margin: 0 0 6px;
-    font-size: 1.8rem;
+    margin: 0;
+    font-size: clamp(2rem, 4vw, 2.8rem);
     line-height: 1;
   }
-  .subtitle, .tiny { color: var(--muted); }
-  .tiny { font-size: 0.92rem; line-height: 1.35; }
-  .row { display: flex; gap: 10px; flex-wrap: wrap; }
-  .row button { flex: 1 1 140px; }
-  button {
+  .subtitle {
+    color: var(--muted);
+    margin-top: 6px;
+    font-size: 1rem;
+  }
+  .tag {
+    color: var(--muted);
+    font-size: 0.95rem;
+    text-align: right;
+    line-height: 1.3;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    background: linear-gradient(180deg, #10151b, #0c1015);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px;
+    touch-action: none;
+  }
+  .status {
+    padding: 12px 14px;
+    font-weight: 700;
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+  }
+  .status.success { color: var(--good); }
+  .status.warn { color: var(--warn); }
+  .controls {
+    padding: 12px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+  }
+  button, select {
     appearance: none;
     border: 0;
     border-radius: 14px;
+    min-height: 54px;
+    padding: 12px 14px;
     background: var(--panel2);
     color: var(--text);
-    padding: 14px 16px;
-    min-height: 50px;
     font-size: 1rem;
     font-weight: 800;
-    cursor: pointer;
-    transition: transform .08s ease, filter .15s ease, background .15s ease;
     border: 1px solid rgba(255,255,255,0.08);
-    touch-action: manipulation;
   }
-  button:hover { filter: brightness(1.1); }
+  button {
+    cursor: pointer;
+    transition: transform .08s ease, filter .15s ease;
+  }
   button:active { transform: translateY(1px) scale(0.99); }
-  .primary { background: linear-gradient(180deg, #2563eb, #1d4ed8); }
-  .good { background: linear-gradient(180deg, #15803d, #166534); }
-  .section {
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 14px;
-    padding: 12px;
+  button:hover { filter: brightness(1.06); }
+  button.primary { background: linear-gradient(180deg, #2563eb, #1d4ed8); }
+  button.good { background: linear-gradient(180deg, #15803d, #166534); }
+  button.warnish { background: linear-gradient(180deg, #7c3aed, #6d28d9); }
+  .menu-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(7,10,14,0.74);
+    display: none;
+    place-items: center;
+    padding: 20px;
+    z-index: 50;
+    backdrop-filter: blur(8px);
   }
-  .section h2 {
-    margin: 0 0 10px;
-    font-size: 1rem;
+  .menu-overlay.open { display: grid; }
+  .menu-card {
+    width: min(520px, 100%);
+    padding: 18px;
   }
-  #status {
+  .menu-card h2 {
+    margin: 0 0 6px;
+    font-size: 1.5rem;
+  }
+  .menu-card p {
+    margin: 0 0 14px;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+  .menu-grid {
+    display: grid;
+    gap: 12px;
+    margin: 14px 0;
+  }
+  .menu-grid label {
+    display: grid;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 0.95rem;
     font-weight: 700;
-    min-height: 1.2em;
   }
-  .accent { color: var(--accent); }
-  .success { color: var(--good); }
-  .warn { color: var(--warn); }
-
-  .mobile-bar { display: none; }
-
-  @media (max-width: 980px) {
-    body {
-      align-items: flex-start;
-      padding: 10px 10px calc(90px + env(safe-area-inset-bottom));
-    }
-    .wrap { grid-template-columns: 1fr; }
-    .panel, .side { border-radius: 16px; }
-    .panel { padding: 12px; }
-    .side { padding: 12px; }
-    canvas { max-width: 100%; }
-    .section.controls-desktop { display: none; }
-    .mobile-bar {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 8px;
+  .menu-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .menu-actions.single { grid-template-columns: 1fr; }
+  .mini-note {
+    color: var(--muted);
+    font-size: 0.92rem;
+    margin-top: 8px;
+  }
+  @media (max-width: 780px) {
+    body { padding: 10px 10px calc(96px + env(safe-area-inset-bottom)); }
+    .panel { padding: 10px; }
+    .controls {
       position: fixed;
       left: 10px;
       right: 10px;
       bottom: calc(10px + env(safe-area-inset-bottom));
       z-index: 20;
-      padding: 10px;
       background: rgba(17,20,24,0.92);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 16px;
-      box-shadow: 0 10px 28px rgba(0,0,0,0.35);
+      backdrop-filter: blur(12px);
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
-    .mobile-bar button {
-      min-height: 56px;
-      padding: 10px 8px;
-      font-size: 0.96rem;
+    .topbar {
+      align-items: start;
+      flex-direction: column;
     }
+    .tag { text-align: left; }
   }
 </style>
 </head>
 <body>
-  <div class="wrap">
+  <div class="app">
     <div class="panel">
-      <h1>Tetrish</h1>
-      <div class="subtitle">A no-timer packing puzzle. Fill every square.</div>
-      <canvas id="game" width="728" height="860" aria-label="Tetrish game canvas"></canvas>
+      <div class="topbar">
+        <div>
+          <h1>Tetrish</h1>
+          <div class="subtitle">Fill every square.</div>
+        </div>
+        <div class="tag" id="gameTag">8×8 • Medium • 2 holds</div>
+      </div>
+      <canvas id="game" width="760" height="660" aria-label="Tetrish game board"></canvas>
     </div>
 
-    <div class="side">
-      <div class="section controls-desktop">
-        <h2>Controls</h2>
-        <div class="row">
-          <button id="rotLeft">Rotate ⟲</button>
-          <button id="rotRight">Rotate ⟳</button>
-          <button id="holdBtn">Hold</button>
-          <button id="placeBtn" class="good">Place</button>
-          <button id="newBtn" class="primary">New Puzzle</button>
-        </div>
-      </div>
+    <div id="status" class="status">Loading…</div>
 
-      <div class="section">
-        <h2>Status</h2>
-        <div id="status">Tap a piece to select it. Drag it to move. Let go to place it if it fits.</div>
-        <div class="tiny" style="margin-top:8px;">
-          Phone: tap to select, drag to move, release to place if it fits. Keyboard: <span class="accent">Q</span>/<span class="accent">R</span>/<span class="accent">E</span> rotate, <span class="accent">H</span> hold, <span class="accent">Enter</span> place, <span class="accent">N</span> new puzzle.
-        </div>
-      </div>
-
-      <div class="section tiny">
-        <h2>How it works</h2>
-        Every puzzle uses a prebuilt piece set that is guaranteed to tile the board completely. The order is shuffled each round, so the solution is always possible but not always obvious.
-      </div>
-
-      <div class="section tiny">
-        <h2>Rules</h2>
-        Tap any piece to select it. Drag a selected piece onto the grid. If you let go and it fits, it places automatically. If it does not fit, it keeps hovering until you drag it somewhere that does. If a move would leave a picked-up piece with nowhere legal to go, the game returns it to its last valid spot. A green outline fits. A red outline does not. The hold slot stores one piece and can be swapped at any time.
-      </div>
+    <div class="controls">
+      <button id="rotLeftBtn">⟲</button>
+      <button id="rotRightBtn">⟳</button>
+      <button id="holdBtn" class="warnish">Hold</button>
+      <button id="menuBtn" class="primary">Menu</button>
     </div>
   </div>
 
-  <div class="mobile-bar">
-    <button id="mRotLeft">⟲</button>
-    <button id="mRotRight">⟳</button>
-    <button id="mHold">Hold</button>
-    <button id="mPlace" class="good">Place</button>
-    <button id="mNew" class="primary">New</button>
+  <div id="menuOverlay" class="menu-overlay open">
+    <div class="menu-card">
+      <h2>New Game</h2>
+      <p>Pick a square board size and difficulty. Easy, medium, and hard give you 3, 2, and 1 hold slot.</p>
+
+      <div class="menu-grid">
+        <label>
+          Grid size
+          <select id="sizeSelect">
+            <option value="6x6">6 × 6</option>
+            <option value="8x8" selected>8 × 8</option>
+            <option value="10x10">10 × 10</option>
+          </select>
+        </label>
+
+        <label>
+          Difficulty
+          <select id="difficultySelect">
+            <option value="easy">Easy — 3 holds</option>
+            <option value="medium" selected>Medium — 2 holds</option>
+            <option value="hard">Hard — 1 hold</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="menu-actions" id="menuActions">
+        <button id="continueBtn" class="good">Continue</button>
+        <button id="startBtn" class="primary">Start New</button>
+      </div>
+      <div class="mini-note" id="saveNote">Your progress auto-saves and reloads after refresh.</div>
+    </div>
   </div>
 
 <script>
 (() => {
-  const canvas = document.getElementById('game');
-  const ctx = canvas.getContext('2d');
-  const statusEl = document.getElementById('status');
-  const rotLeftBtn = document.getElementById('rotLeft');
-  const rotRightBtn = document.getElementById('rotRight');
-  const holdBtn = document.getElementById('holdBtn');
-  const placeBtn = document.getElementById('placeBtn');
-  const newBtn = document.getElementById('newBtn');
-
-  const mRotLeftBtn = document.getElementById('mRotLeft');
-  const mRotRightBtn = document.getElementById('mRotRight');
-  const mHoldBtn = document.getElementById('mHold');
-  const mPlaceBtn = document.getElementById('mPlace');
-  const mNewBtn = document.getElementById('mNew');
-
-  const BOARD = { x: 24, y: 24, cols: 8, rows: 8, cell: 54 };
-  const CURRENT_BOX = { x: 490, y: 36, w: 200, h: 160 };
-  const HOLD_BOX = { x: 490, y: 216, w: 200, h: 160 };
-  const QUEUE_BOX = { x: 490, y: 396, w: 200, h: 330 };
-  const MSG_BOX = { x: 24, y: 472, w: 432, h: 170 };
-
+  const SAVE_KEY = 'tetrish-save-v2';
+  const SAVE_META_KEY = 'tetrish-save-meta-v2';
+  const LEGACY_SAVE_KEY = 'tetrish-save-v1';
+  const SAVE_DEBOUNCE_MS = 120;
+  let saveTimer = null;
+  const HOLDS_BY_DIFFICULTY = { easy: 3, medium: 2, hard: 1 };
   const COLORS = ['#60a5fa','#f97316','#34d399','#facc15','#f472b6','#a78bfa','#22d3ee','#fb7185','#84cc16','#38bdf8','#f59e0b','#4ade80','#e879f9','#ef4444','#06b6d4','#c084fc'];
 
   const BASE_SHAPES = {
@@ -220,21 +257,33 @@
     Z: [[0,0],[1,0],[1,1],[2,1]],
   };
 
-  const PUZZLES = [
-    [['J',2],['L',1],['I',0],['T',2],['J',3],['L',1],['S',0],['T',2],['O',0],['S',0],['T',3],['J',2],['T',2],['L',2],['L',1],['I',0]],
-    [['J',3],['J',1],['L',2],['L',2],['I',1],['T',3],['I',1],['T',3],['S',1],['L',2],['J',0],['T',1],['S',0],['T',2],['S',1],['L',0]],
-    [['L',3],['J',0],['L',1],['L',3],['T',3],['T',1],['I',1],['S',0],['O',0],['J',0],['T',0],['S',1],['T',2],['O',0],['J',0],['Z',1]],
-    [['J',2],['T',3],['L',3],['S',1],['L',0],['I',1],['J',0],['T',3],['O',0],['L',0],['T',1],['L',2],['T',2],['J',3],['S',0],['O',0]],
-  ];
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const statusEl = document.getElementById('status');
+  const gameTagEl = document.getElementById('gameTag');
+
+  const rotLeftBtn = document.getElementById('rotLeftBtn');
+  const rotRightBtn = document.getElementById('rotRightBtn');
+  const holdBtn = document.getElementById('holdBtn');
+  const menuBtn = document.getElementById('menuBtn');
+
+  const menuOverlay = document.getElementById('menuOverlay');
+  const sizeSelect = document.getElementById('sizeSelect');
+  const difficultySelect = document.getElementById('difficultySelect');
+  const continueBtn = document.getElementById('continueBtn');
+  const startBtn = document.getElementById('startBtn');
+  const saveNote = document.getElementById('saveNote');
+  const menuActions = document.getElementById('menuActions');
 
   const state = {
+    config: { cols: 8, rows: 8, difficulty: 'medium', holdSlots: 2 },
     pieces: [],
     queue: [],
-    holdId: null,
     currentId: null,
+    holdIds: [],
     selectedId: null,
-    draggingId: null,
     preview: null,
+    draggingId: null,
     dragAnchor: { x: 0, y: 0 },
     dragOrigin: null,
     activePointerId: null,
@@ -243,7 +292,33 @@
     dragStarted: false,
     solved: false,
     sparkle: 0,
+    menuOpen: true,
   };
+
+  const layout = {
+    boardBox: { x: 24, y: 24, w: 470, h: 612 },
+    sideBox: { x: 520, y: 24, w: 216, h: 612 },
+    board: { x: 0, y: 0, cell: 48, w: 0, h: 0 },
+    currentBox: { x: 0, y: 0, w: 0, h: 0 },
+    holdBoxes: [],
+  };
+
+  const uniqueRotations = {};
+  for (const [type, cells] of Object.entries(BASE_SHAPES)) {
+    let cur = cells.map(([x,y]) => [x,y]);
+    const rots = [];
+    const seen = new Set();
+    for (let i = 0; i < 4; i++) {
+      const n = normalize(cur);
+      const key = JSON.stringify(n);
+      if (!seen.has(key)) {
+        seen.add(key);
+        rots.push(n);
+      }
+      cur = cur.map(([x,y]) => [y, -x]);
+    }
+    uniqueRotations[type] = rots;
+  }
 
   const TOUCH_DRAG_THRESHOLD = 12;
   const MOUSE_DRAG_THRESHOLD = 2;
@@ -252,7 +327,9 @@
   function normalize(cells) {
     const minX = Math.min(...cells.map(c => c[0]));
     const minY = Math.min(...cells.map(c => c[1]));
-    return cells.map(([x, y]) => [x - minX, y - minY]).sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+    return cells
+      .map(([x, y]) => [x - minX, y - minY])
+      .sort((a, b) => a[1] - b[1] || a[0] - b[0]);
   }
 
   function rotateCW(cells) {
@@ -274,15 +351,66 @@
     return a;
   }
 
-  function getPiece(id) {
-    return state.pieces.find(p => p.id === id) || null;
+  function randInt(n) {
+    return Math.floor(Math.random() * n);
   }
 
-  function pieceBounds(piece) {
-    return {
-      w: Math.max(...piece.cells.map(c => c[0])) + 1,
-      h: Math.max(...piece.cells.map(c => c[1])) + 1,
-    };
+  function holdsForDifficulty(difficulty) {
+    return HOLDS_BY_DIFFICULTY[difficulty] || 2;
+  }
+
+  function updateGameTag() {
+    gameTagEl.textContent = `${state.config.cols}×${state.config.rows} • ${capitalize(state.config.difficulty)} • ${state.config.holdSlots} hold${state.config.holdSlots === 1 ? '' : 's'}`;
+  }
+
+  function capitalize(s) {
+    return s ? s[0].toUpperCase() + s.slice(1) : s;
+  }
+
+  function syncMenuFromState() {
+    const sizeValue = `${state.config.cols}x${state.config.rows}`;
+    if ([...sizeSelect.options].some(opt => opt.value === sizeValue)) {
+      sizeSelect.value = sizeValue;
+    }
+    if ([...difficultySelect.options].some(opt => opt.value === state.config.difficulty)) {
+      difficultySelect.value = state.config.difficulty;
+    }
+  }
+
+  function computeLayout() {
+    const cols = state.config.cols;
+    const rows = state.config.rows;
+    const cell = Math.floor(Math.min(
+      (layout.boardBox.w - 16) / cols,
+      (layout.boardBox.h - 16) / rows
+    ));
+    layout.board.cell = cell;
+    layout.board.w = cols * cell;
+    layout.board.h = rows * cell;
+    layout.board.x = layout.boardBox.x + Math.floor((layout.boardBox.w - layout.board.w) / 2);
+    layout.board.y = layout.boardBox.y + Math.floor((layout.boardBox.h - layout.board.h) / 2);
+
+    const gap = 14;
+    const currentH = 140;
+    const holdsAreaTop = layout.sideBox.y + currentH + gap;
+    const holdsAreaH = layout.sideBox.h - currentH - gap;
+    const count = state.config.holdSlots;
+    const boxH = Math.floor((holdsAreaH - gap * (count - 1)) / count);
+
+    layout.currentBox = { x: layout.sideBox.x, y: layout.sideBox.y, w: layout.sideBox.w, h: currentH };
+    layout.holdBoxes = [];
+    for (let i = 0; i < count; i++) {
+      layout.holdBoxes.push({
+        x: layout.sideBox.x,
+        y: holdsAreaTop + i * (boxH + gap),
+        w: layout.sideBox.w,
+        h: boxH,
+      });
+    }
+  }
+
+  function boardRect() {
+    return { x: layout.board.x, y: layout.board.y, w: layout.board.w, h: layout.board.h };
   }
 
   function canvasPoint(ev) {
@@ -301,12 +429,19 @@
     return Math.hypot(a.x - b.x, a.y - b.y);
   }
 
-  function isCellInsideBoard(x, y) {
-    return x >= 0 && y >= 0 && x < BOARD.cols && y < BOARD.rows;
+  function getPiece(id) {
+    return state.pieces.find(p => p.id === id) || null;
   }
 
-  function boardRect() {
-    return { x: BOARD.x, y: BOARD.y, w: BOARD.cols * BOARD.cell, h: BOARD.rows * BOARD.cell };
+  function pieceBounds(piece) {
+    return {
+      w: Math.max(...piece.cells.map(c => c[0])) + 1,
+      h: Math.max(...piece.cells.map(c => c[1])) + 1,
+    };
+  }
+
+  function isCellInsideBoard(x, y) {
+    return x >= 0 && y >= 0 && x < state.config.cols && y < state.config.rows;
   }
 
   function occupiedMap(ignoreId = null) {
@@ -333,56 +468,32 @@
 
   function clampPreviewToBoard(piece, gx, gy) {
     const b = pieceBounds(piece);
-    const maxGX = BOARD.cols - b.w;
-    const maxGY = BOARD.rows - b.h;
     return {
-      gx: Math.max(0, Math.min(maxGX, gx)),
-      gy: Math.max(0, Math.min(maxGY, gy)),
+      gx: Math.max(0, Math.min(state.config.cols - b.w, gx)),
+      gy: Math.max(0, Math.min(state.config.rows - b.h, gy)),
     };
   }
 
   function findFirstFit(piece) {
-    for (let y = 0; y < BOARD.rows; y++) {
-      for (let x = 0; x < BOARD.cols; x++) {
+    for (let y = 0; y < state.config.rows; y++) {
+      for (let x = 0; x < state.config.cols; x++) {
         if (canPlace(piece, x, y, piece.id)) return { gx: x, gy: y };
       }
     }
     return clampPreviewToBoard(piece, 0, 0);
   }
 
-  function pieceHome(piece) {
-    if (piece.placed) return 'board';
-    if (state.currentId === piece.id) return 'current';
-    if (state.holdId === piece.id) return 'hold';
-    return 'pool';
-  }
-
-  function removeFromBoard(piece) {
-    piece.placed = false;
-    piece.gx = null;
-    piece.gy = null;
-    state.solved = false;
-  }
-
   function createPreviewForPiece(piece, preferred = null) {
-    let gx = 0;
-    let gy = 0;
-
+    let gx = 0, gy = 0;
     if (preferred) {
-      gx = preferred.gx;
-      gy = preferred.gy;
+      gx = preferred.gx; gy = preferred.gy;
     } else if (state.preview && state.preview.id === piece.id) {
-      gx = state.preview.gx;
-      gy = state.preview.gy;
+      gx = state.preview.gx; gy = state.preview.gy;
     } else if (piece.placed && piece.gx != null && piece.gy != null) {
-      gx = piece.gx;
-      gy = piece.gy;
+      gx = piece.gx; gy = piece.gy;
     } else {
-      const fit = findFirstFit(piece);
-      gx = fit.gx;
-      gy = fit.gy;
+      ({ gx, gy } = findFirstFit(piece));
     }
-
     const clamped = clampPreviewToBoard(piece, gx, gy);
     state.preview = {
       id: piece.id,
@@ -392,9 +503,39 @@
     };
   }
 
+  function pieceHome(piece) {
+    if (piece.placed) return 'board';
+    if (state.currentId === piece.id) return 'current';
+    const holdIndex = state.holdIds.indexOf(piece.id);
+    if (holdIndex !== -1) return `hold:${holdIndex}`;
+    return 'queue';
+  }
+
+  function getFloatingLoosePiece() {
+    if (!state.preview) return null;
+    const piece = getPiece(state.preview.id);
+    if (!piece || piece.placed) return null;
+    return piece;
+  }
+
+  function clearPointerState() {
+    state.draggingId = null;
+    state.dragOrigin = null;
+    state.activePointerId = null;
+    state.pointerDown = null;
+    state.dragStarted = false;
+  }
+
+  function removeFromBoard(piece) {
+    piece.placed = false;
+    piece.gx = null;
+    piece.gy = null;
+    state.solved = false;
+  }
+
   function hasAnyFitInCurrentRotation(piece) {
-    for (let y = 0; y < BOARD.rows; y++) {
-      for (let x = 0; x < BOARD.cols; x++) {
+    for (let y = 0; y < state.config.rows; y++) {
+      for (let x = 0; x < state.config.cols; x++) {
         if (canPlace(piece, x, y, piece.id)) return true;
       }
     }
@@ -402,69 +543,51 @@
   }
 
   function hasAnyFitInAnyRotation(piece) {
-    const originalRot = piece.rot;
-    const originalCells = piece.cells.map(([x, y]) => [x, y]);
-
+    const oldRot = piece.rot;
+    const oldCells = piece.cells.map(([x, y]) => [x, y]);
     for (let rot = 0; rot < 4; rot++) {
       piece.rot = rot;
       piece.cells = shapeFor(piece.type, rot);
       if (hasAnyFitInCurrentRotation(piece)) {
-        piece.rot = originalRot;
-        piece.cells = originalCells;
+        piece.rot = oldRot;
+        piece.cells = oldCells;
         return true;
       }
     }
-
-    piece.rot = originalRot;
-    piece.cells = originalCells;
+    piece.rot = oldRot;
+    piece.cells = oldCells;
     return false;
   }
 
   function restorePieceToLastPlaced(piece) {
     if (!piece.lastPlaced) return false;
-
-    const restoreRot = piece.lastPlaced.rot;
-    const restoreCells = shapeFor(piece.type, restoreRot);
-    const restoreGX = piece.lastPlaced.gx;
-    const restoreGY = piece.lastPlaced.gy;
-
+    const saved = piece.lastPlaced;
     const oldRot = piece.rot;
     const oldCells = piece.cells.map(([x, y]) => [x, y]);
-
-    piece.rot = restoreRot;
-    piece.cells = restoreCells;
-
-    if (!canPlace(piece, restoreGX, restoreGY, piece.id)) {
+    piece.rot = saved.rot;
+    piece.cells = shapeFor(piece.type, saved.rot);
+    if (!canPlace(piece, saved.gx, saved.gy, piece.id)) {
       piece.rot = oldRot;
       piece.cells = oldCells;
       return false;
     }
-
-    piece.gx = restoreGX;
-    piece.gy = restoreGY;
+    piece.gx = saved.gx;
+    piece.gy = saved.gy;
     piece.placed = true;
     state.selectedId = piece.id;
-    state.preview = { id: piece.id, gx: restoreGX, gy: restoreGY, valid: true };
+    state.preview = { id: piece.id, gx: piece.gx, gy: piece.gy, valid: true };
     return true;
   }
 
-  function recoverIfPieceHasNoPossibleFit(piece, reasonText) {
+  function recoverIfPieceHasNoPossibleFit(piece, reason) {
     if (!piece || piece.placed) return false;
     if (hasAnyFitInAnyRotation(piece)) return false;
-
     if (restorePieceToLastPlaced(piece)) {
-      updateStatus(reasonText || 'That move would strand the piece, so it was returned to its last valid spot.', true);
+      updateStatus(reason || 'That move would strand the piece, so it was returned to its last valid spot.', true);
+      saveGame();
       return true;
     }
-
     return false;
-  }
-
-  function getFloatingLoosePiece() {
-    if (!state.preview) return null;
-    const piece = getPiece(state.preview.id);
-    if (!piece) return null;
-    return piece.placed ? null : piece;
   }
 
   function resolveFloatingLoosePieceBeforeSwitch(nextPieceId = null) {
@@ -473,23 +596,42 @@
     if (floating.id === nextPieceId) return true;
 
     state.selectedId = floating.id;
-
     if (state.preview.valid) {
       placeSelected();
       return true;
     }
-
-    if (recoverIfPieceHasNoPossibleFit(floating, 'The hovering piece had no legal destination, so it was returned to its last valid spot.')) {
+    if (recoverIfPieceHasNoPossibleFit(floating, 'The hovering piece had nowhere legal to go, so it was returned to its last valid spot.')) {
       return true;
     }
-
-    updateStatus('Finish placing the hovering piece first. Drag it somewhere it fits and let go.', true);
+    updateStatus('Finish placing the hovering piece first.', true);
     return false;
+  }
+
+  function updateStatus(msg, warn = false) {
+    statusEl.textContent = msg;
+    statusEl.className = `status${warn ? ' warn' : (state.solved ? ' success' : '')}`;
+  }
+
+  function scheduleCurrentAfterPlacement(placedId) {
+    if (state.currentId !== placedId) return;
+    state.currentId = state.queue.length ? state.queue.shift() : null;
+  }
+
+  function checkSolved() {
+    const occ = occupiedMap();
+    state.solved = occ.size === state.config.cols * state.config.rows;
+    if (state.solved) {
+      state.sparkle = 120;
+      updateStatus('Solved.');
+    }
+  }
+
+  function firstEmptyHoldIndex() {
+    return state.holdIds.indexOf(null);
   }
 
   function selectPiece(piece, fromTap = false) {
     if (!resolveFloatingLoosePieceBeforeSwitch(piece.id)) return false;
-
     state.selectedId = piece.id;
 
     const origin = pieceHome(piece);
@@ -502,81 +644,153 @@
       }
     }
 
-    if (fromTap) {
-      if (origin === 'board') updateStatus('Piece selected. Drag it to move it, or tap a valid preview to place.');
-      else if (origin === 'hold') updateStatus('Held piece selected. Drag it onto the board or press Hold to swap it.');
-      else updateStatus('Piece selected. Drag it onto the board. Let go to place it if it fits.');
-    } else {
-      if (origin === 'board') updateStatus('Piece selected. Drag it to a new spot, rotate it, then place it.');
-      else if (origin === 'hold') updateStatus('Held piece selected. Drag it onto the board or press Hold to swap it.');
-      else updateStatus('Piece selected. Drag it over the grid, rotate it, then place it.');
+    if (!fromTap) {
+      if (origin === 'board') updateStatus('Piece selected.');
+      else updateStatus('Piece selected.');
     }
-
+    saveGame();
     return true;
   }
 
-  function moveCurrentForward(placedPieceId) {
-    if (state.currentId !== placedPieceId) return;
-    state.currentId = state.queue.length ? state.queue.shift() : null;
+  function pieceMiniRect(piece, box) {
+    const b = pieceBounds(piece);
+    const size = Math.min(30, Math.floor(Math.min((box.w - 34) / Math.max(1, b.w), (box.h - 58) / Math.max(1, b.h))));
+    const x = box.x + Math.floor((box.w - b.w * size) / 2);
+    const y = box.y + 36 + Math.floor((box.h - 48 - b.h * size) / 2);
+    return { x, y, size };
+  }
+
+  function pieceHitTest(piece, x, y, source, sourceIndex = null) {
+    return !!hitLocalCell(piece, x, y, source, sourceIndex);
+  }
+
+  function hitLocalCell(piece, x, y, source, sourceIndex = null) {
+    let cellSize = layout.board.cell;
+    let originX = 0;
+    let originY = 0;
+
+    if (source === 'board' && piece.placed) {
+      originX = layout.board.x + piece.gx * layout.board.cell;
+      originY = layout.board.y + piece.gy * layout.board.cell;
+    } else if (source === 'preview' && state.preview && state.preview.id === piece.id) {
+      originX = layout.board.x + state.preview.gx * layout.board.cell;
+      originY = layout.board.y + state.preview.gy * layout.board.cell;
+    } else if (source === 'current') {
+      const rect = pieceMiniRect(piece, layout.currentBox);
+      originX = rect.x;
+      originY = rect.y;
+      cellSize = rect.size;
+    } else if (source === 'hold' && sourceIndex != null) {
+      const rect = pieceMiniRect(piece, layout.holdBoxes[sourceIndex]);
+      originX = rect.x;
+      originY = rect.y;
+      cellSize = rect.size;
+    } else {
+      return null;
+    }
+
+    for (const [dx, dy] of piece.cells) {
+      const cx = originX + dx * cellSize;
+      const cy = originY + dy * cellSize;
+      if (x >= cx && y >= cy && x <= cx + cellSize && y <= cy + cellSize) return { x: dx, y: dy };
+    }
+    return null;
+  }
+
+  function beginDragging(piece, pointerX, pointerY, source, sourceIndex = null, pointerType = 'mouse') {
+    state.selectedId = piece.id;
+    state.draggingId = piece.id;
+    state.dragStarted = true;
+    state.activePointerType = pointerType;
+    state.dragOrigin = {
+      source,
+      sourceIndex,
+      wasPlaced: piece.placed,
+      gx: piece.gx,
+      gy: piece.gy,
+    };
+
+    const anchor = hitLocalCell(piece, pointerX, pointerY, source, sourceIndex) || piece.cells[0];
+    state.dragAnchor = { x: anchor.x, y: anchor.y };
+
+    if (source === 'board' && piece.placed) {
+      removeFromBoard(piece);
+      createPreviewForPiece(piece, { gx: state.dragOrigin.gx, gy: state.dragOrigin.gy });
+    } else if (source === 'preview' && state.preview && state.preview.id === piece.id) {
+      // keep floating preview
+    } else {
+      createPreviewForPiece(piece);
+    }
+
+    updatePreviewFromPointer(pointerX, pointerY, pointerType);
+  }
+
+  function updatePreviewFromPointer(pointerX, pointerY, pointerType = state.activePointerType) {
+    const piece = getPiece(state.draggingId ?? state.selectedId);
+    if (!piece) return;
+    const liftedY = pointerType === 'touch' ? pointerY - TOUCH_PREVIEW_LIFT_PX : pointerY;
+    const gx = Math.round((pointerX - layout.board.x) / layout.board.cell) - state.dragAnchor.x;
+    const gy = Math.round((liftedY - layout.board.y) / layout.board.cell) - state.dragAnchor.y;
+    const clamped = clampPreviewToBoard(piece, gx, gy);
+    state.preview = {
+      id: piece.id,
+      gx: clamped.gx,
+      gy: clamped.gy,
+      valid: canPlace(piece, clamped.gx, clamped.gy, piece.id),
+    };
+  }
+
+  function removePieceFromHolds(pieceId) {
+    const idx = state.holdIds.indexOf(pieceId);
+    if (idx !== -1) state.holdIds[idx] = null;
   }
 
   function placeSelected() {
     const piece = getPiece(state.selectedId);
     if (!piece || !state.preview || state.preview.id !== piece.id) {
       updateStatus('Select a piece first.', true);
-      return;
+      return false;
     }
-
     if (!state.preview.valid) {
-      updateStatus('That position does not fit. Move or rotate the piece first.', true);
-      return;
+      updateStatus('That spot does not fit.', true);
+      return false;
     }
 
     const wasCurrent = state.currentId === piece.id;
+    removePieceFromHolds(piece.id);
 
     piece.gx = state.preview.gx;
     piece.gy = state.preview.gy;
     piece.placed = true;
     piece.lastPlaced = { gx: piece.gx, gy: piece.gy, rot: piece.rot };
 
-    if (state.holdId === piece.id) state.holdId = null;
-    moveCurrentForward(piece.id);
-
+    scheduleCurrentAfterPlacement(piece.id);
     clearPointerState();
 
     if (wasCurrent && state.currentId != null) {
       state.selectedId = state.currentId;
       state.preview = null;
+      updateStatus('Placed.');
     } else {
       state.selectedId = piece.id;
-      state.preview = {
-        id: piece.id,
-        gx: piece.gx,
-        gy: piece.gy,
-        valid: true,
-      };
+      state.preview = { id: piece.id, gx: piece.gx, gy: piece.gy, valid: true };
+      updateStatus('Placed.');
     }
 
     checkSolved();
-    if (!state.solved) {
-      if (wasCurrent && state.currentId != null) updateStatus('Piece placed. The next piece is ready.');
-      else updateStatus('Piece placed. Tap it again any time to move it.');
-    } else if (state.currentId == null && state.selectedId == null) {
-      state.selectedId = piece.id;
-      state.preview = { id: piece.id, gx: piece.gx, gy: piece.gy, valid: true };
-    }
+    saveGame();
+    return true;
   }
 
   function rotatePiece(dir) {
     const piece = getPiece(state.selectedId ?? state.currentId);
     if (!piece) {
-      updateStatus('There is no piece selected to rotate.', true);
+      updateStatus('No piece selected.', true);
       return;
     }
 
     const oldRot = piece.rot;
-    const oldCells = piece.cells.map(([x, y]) => [x, y]);
-
+    const oldCells = piece.cells.map(([x,y]) => [x,y]);
     piece.rot = ((piece.rot + dir) % 4 + 4) % 4;
     piece.cells = shapeFor(piece.type, piece.rot);
 
@@ -593,7 +807,7 @@
       if (!canPlace(piece, clamped.gx, clamped.gy, piece.id)) {
         piece.rot = oldRot;
         piece.cells = oldCells;
-        updateStatus('No room to rotate there. Move the piece first.', true);
+        updateStatus('No room to rotate there.', true);
         return;
       }
       piece.gx = clamped.gx;
@@ -604,202 +818,52 @@
       else state.preview = null;
     }
 
-    if (recoverIfPieceHasNoPossibleFit(piece, 'That rotation would leave the piece with nowhere to go, so it was returned to its last valid spot.')) {
-      return;
-    }
-
-    updateStatus('Rotated piece.');
-  }
-
-  function sendPieceToHold(piece) {
-    const previousHold = state.holdId;
-    state.preview = null;
-    state.holdId = piece.id;
-
-    if (piece.id === state.currentId) {
-      state.currentId = previousHold != null ? previousHold : (state.queue.length ? state.queue.shift() : null);
-      state.selectedId = state.currentId ?? state.holdId;
-      if (state.currentId != null) createPreviewForPiece(getPiece(state.currentId));
-      else state.preview = null;
-      return;
-    }
-
-    if (piece.id === previousHold) {
-      const oldCurrent = state.currentId;
-      state.currentId = piece.id;
-      state.holdId = oldCurrent;
-      state.selectedId = state.currentId;
-      createPreviewForPiece(getPiece(state.currentId));
-      return;
-    }
-
-    if (previousHold != null) {
-      state.currentId = previousHold;
-      state.selectedId = previousHold;
-      createPreviewForPiece(getPiece(previousHold));
-    } else if (state.currentId != null) {
-      state.selectedId = state.currentId;
-      createPreviewForPiece(getPiece(state.currentId));
-    } else {
-      state.selectedId = state.holdId;
-      state.preview = null;
-    }
+    if (recoverIfPieceHasNoPossibleFit(piece, 'That rotation stranded the piece, so it was returned to its last valid spot.')) return;
+    updateStatus('Rotated.');
+    saveGame();
   }
 
   function holdCurrent() {
     const piece = getPiece(state.selectedId ?? state.currentId);
     if (!piece) {
-      updateStatus('There is no piece selected to hold.', true);
+      updateStatus('No piece selected.', true);
       return;
     }
-
     if (!resolveFloatingLoosePieceBeforeSwitch(piece.id)) return;
 
-    if (piece.placed) removeFromBoard(piece);
-    clearPointerState();
-
-    if (piece.id === state.holdId) {
-      const oldCurrent = state.currentId;
+    const holdIndex = state.holdIds.indexOf(piece.id);
+    if (holdIndex !== -1) {
+      const outgoingCurrent = state.currentId;
       state.currentId = piece.id;
-      state.holdId = oldCurrent;
+      state.holdIds[holdIndex] = outgoingCurrent;
       state.selectedId = state.currentId;
-      createPreviewForPiece(piece);
-      updateStatus('Swapped the held piece back into play.');
+      state.preview = null;
+      updateStatus('Hold swap.');
+      saveGame();
       return;
     }
 
-    sendPieceToHold(piece);
-    if (state.selectedId != null) {
-      const selected = getPiece(state.selectedId);
-      if (selected && !selected.placed && state.preview && state.preview.id !== selected.id) {
-        state.preview = null;
-      }
-    }
-    updateStatus('Moved piece into hold.');
-  }
-
-  function pieceScreenRect(piece, where = 'current') {
-    const b = pieceBounds(piece);
-    const size = where === 'queue' ? 18 : 26;
-    const box = where === 'hold' ? HOLD_BOX : CURRENT_BOX;
-    const x = box.x + (box.w - b.w * size) / 2;
-    const y = box.y + 34 + (box.h - 58 - b.h * size) / 2;
-    return { x, y, size };
-  }
-
-  function hitLocalCell(piece, x, y, source) {
-    let cellSize = BOARD.cell;
-    let originX = 0;
-    let originY = 0;
-
-    if (source === 'board' && piece.placed) {
-      originX = BOARD.x + piece.gx * BOARD.cell;
-      originY = BOARD.y + piece.gy * BOARD.cell;
-    } else if (source === 'preview' && state.preview && state.preview.id === piece.id) {
-      originX = BOARD.x + state.preview.gx * BOARD.cell;
-      originY = BOARD.y + state.preview.gy * BOARD.cell;
-    } else if (source === 'current') {
-      const rect = pieceScreenRect(piece, 'current');
-      originX = rect.x;
-      originY = rect.y;
-      cellSize = rect.size;
-    } else if (source === 'hold') {
-      const rect = pieceScreenRect(piece, 'hold');
-      originX = rect.x;
-      originY = rect.y;
-      cellSize = rect.size;
-    } else {
-      return null;
+    const empty = firstEmptyHoldIndex();
+    if (empty === -1) {
+      updateStatus('Hold is full.', true);
+      return;
     }
 
-    for (const cell of piece.cells) {
-      const dx = cell[0];
-      const dy = cell[1];
-      const cx = originX + dx * cellSize;
-      const cy = originY + dy * cellSize;
-      if (x >= cx && y >= cy && x <= cx + cellSize && y <= cy + cellSize) {
-        return { x: dx, y: dy };
-      }
-    }
-    return null;
-  }
+    if (piece.placed) removeFromBoard(piece);
+    if (state.currentId === piece.id) state.currentId = state.queue.length ? state.queue.shift() : null;
 
-  function pieceHitTest(piece, x, y, source) {
-    return !!hitLocalCell(piece, x, y, source);
-  }
-
-  function updateStatus(msg, warn = false) {
-    statusEl.textContent = msg;
-    statusEl.className = warn ? 'warn' : (state.solved ? 'success' : '');
-  }
-
-  function checkSolved() {
-    const occ = occupiedMap();
-    state.solved = occ.size === BOARD.cols * BOARD.rows;
-    if (state.solved) {
-      state.sparkle = 120;
-      updateStatus('Solved. Nice. Start a new puzzle or keep rearranging.');
-    }
-  }
-
-  function clearPointerState() {
-    state.draggingId = null;
-    state.dragOrigin = null;
-    state.activePointerId = null;
-    state.pointerDown = null;
-    state.dragStarted = false;
-  }
-
-  function beginDragging(piece, pointerX, pointerY, source, pointerType = 'mouse') {
-    state.selectedId = piece.id;
-    state.draggingId = piece.id;
-    state.dragStarted = true;
-    state.activePointerType = pointerType;
-    state.dragOrigin = {
-      source,
-      wasPlaced: piece.placed,
-      gx: piece.gx,
-      gy: piece.gy,
-    };
-
-    const anchor = hitLocalCell(piece, pointerX, pointerY, source) || piece.cells[0];
-    state.dragAnchor = { x: anchor.x, y: anchor.y };
-
-    if ((source === 'board' || source === 'preview') && piece.placed) {
-      removeFromBoard(piece);
-      createPreviewForPiece(piece, { gx: state.dragOrigin.gx, gy: state.dragOrigin.gy });
-    } else if (source === 'preview' && state.preview && state.preview.id === piece.id) {
-      // Keep the floating preview exactly where it already is.
-    } else {
-      createPreviewForPiece(piece);
-    }
-
-    updatePreviewFromPointer(pointerX, pointerY, pointerType);
-  }
-
-  function updatePreviewFromPointer(pointerX, pointerY, pointerType = state.activePointerType) {
-    const piece = getPiece(state.draggingId ?? state.selectedId);
-    if (!piece) return;
-
-    const liftedY = pointerType === 'touch' ? pointerY - TOUCH_PREVIEW_LIFT_PX : pointerY;
-    const gx = Math.round((pointerX - BOARD.x) / BOARD.cell) - state.dragAnchor.x;
-    const gy = Math.round((liftedY - BOARD.y) / BOARD.cell) - state.dragAnchor.y;
-    const clamped = clampPreviewToBoard(piece, gx, gy);
-
-    state.preview = {
-      id: piece.id,
-      gx: clamped.gx,
-      gy: clamped.gy,
-      valid: canPlace(piece, clamped.gx, clamped.gy, piece.id),
-    };
+    state.holdIds[empty] = piece.id;
+    state.selectedId = state.currentId ?? piece.id;
+    state.preview = null;
+    updateStatus('Held.');
+    saveGame();
   }
 
   function findHitTarget(x, y) {
     if (state.selectedId != null && state.preview) {
       const previewPiece = getPiece(state.selectedId);
       const previewMatchesPlaced = !!(
-        previewPiece &&
-        previewPiece.placed &&
+        previewPiece && previewPiece.placed &&
         state.preview.id === previewPiece.id &&
         state.preview.gx === previewPiece.gx &&
         state.preview.gy === previewPiece.gy
@@ -815,13 +879,15 @@
     }
 
     if (state.currentId != null) {
-      const current = getPiece(state.currentId);
-      if (current && pieceHitTest(current, x, y, 'current')) return { piece: current, source: 'current' };
+      const piece = getPiece(state.currentId);
+      if (piece && pieceHitTest(piece, x, y, 'current')) return { piece, source: 'current' };
     }
 
-    if (state.holdId != null) {
-      const held = getPiece(state.holdId);
-      if (held && pieceHitTest(held, x, y, 'hold')) return { piece: held, source: 'hold' };
+    for (let i = 0; i < state.holdIds.length; i++) {
+      const id = state.holdIds[i];
+      if (id == null) continue;
+      const piece = getPiece(id);
+      if (piece && pieceHitTest(piece, x, y, 'hold', i)) return { piece, source: 'hold', sourceIndex: i };
     }
 
     return null;
@@ -833,30 +899,23 @@
     if (!resolveFloatingLoosePieceBeforeSwitch(piece.id)) return true;
     if (!pointInRect(x, y, boardRect())) return false;
 
-    if (!state.preview || state.preview.id !== piece.id) {
-      const b = pieceBounds(piece);
-      const gx = Math.round((x - BOARD.x) / BOARD.cell) - Math.floor(b.w / 2);
-      const gy = Math.round((y - BOARD.y) / BOARD.cell) - Math.floor(b.h / 2);
-      createPreviewForPiece(piece, clampPreviewToBoard(piece, gx, gy));
-      updateStatus(state.preview.valid ? 'Preview set. Tap again to place.' : 'Preview set, but it does not fit yet.', !state.preview.valid);
-      return true;
-    }
-
-    const sameSpot = state.preview.valid &&
-      piece.placed &&
-      piece.gx === state.preview.gx &&
-      piece.gy === state.preview.gy;
-
-    if (state.preview.valid && !sameSpot) {
+    const previewRectHit = state.preview && state.preview.id === piece.id && pieceHitTest(piece, x, y, 'preview');
+    if (previewRectHit && state.preview.valid) {
       placeSelected();
       return true;
     }
 
-    updateStatus(state.preview.valid ? 'That piece is already there.' : 'That preview does not fit yet.', !state.preview.valid);
+    const b = pieceBounds(piece);
+    const gx = Math.round((x - layout.board.x) / layout.board.cell) - Math.floor(b.w / 2);
+    const gy = Math.round((y - layout.board.y) / layout.board.cell) - Math.floor(b.h / 2);
+    createPreviewForPiece(piece, clampPreviewToBoard(piece, gx, gy));
+    updateStatus(state.preview.valid ? 'Preview set.' : 'That spot does not fit.', !state.preview.valid);
+    saveGame();
     return true;
   }
 
   function handlePointerDown(ev) {
+    if (state.menuOpen) return;
     if (state.activePointerId != null && state.activePointerId !== ev.pointerId) return;
     ev.preventDefault();
 
@@ -871,7 +930,7 @@
     if (hit) {
       const didSelect = selectPiece(hit.piece, true);
       if (didSelect) {
-        state.dragOrigin = { source: hit.source, pieceId: hit.piece.id };
+        state.dragOrigin = { source: hit.source, sourceIndex: hit.sourceIndex, pieceId: hit.piece.id };
       } else {
         clearPointerState();
       }
@@ -880,41 +939,29 @@
 
     if (tapBoardBehavior(point.x, point.y)) return;
 
-    if (pointInRect(point.x, point.y, boardRect())) {
-      const piece = getPiece(state.selectedId);
-      if (piece && state.preview && state.preview.id === piece.id) {
-        updatePreviewFromPointer(point.x, point.y, state.activePointerType);
-        updateStatus(state.preview && state.preview.valid ? 'Preview moved. Tap again to place or drag more.' : 'Preview moved, but it does not fit yet.', !(state.preview && state.preview.valid));
-        return;
-      }
-    }
-
-    const selectedPiece = getPiece(state.selectedId);
-    const selectedIsFloatingLoose = !!(selectedPiece && !selectedPiece.placed && state.preview && state.preview.id === selectedPiece.id);
-
-    if (selectedIsFloatingLoose) {
-      updateStatus('Selected piece is hovering. Drag it somewhere open and let go to place it.', true);
+    const floating = getFloatingLoosePiece();
+    if (floating) {
+      updateStatus('Finish placing the hovering piece first.', true);
+      clearPointerState();
       return;
     }
 
-    state.selectedId = state.currentId ?? state.holdId ?? null;
+    state.selectedId = state.currentId ?? state.holdIds.find(id => id != null) ?? null;
     state.preview = null;
-    if (state.selectedId != null) {
-      const nextPiece = getPiece(state.selectedId);
-      if (nextPiece && nextPiece.placed) createPreviewForPiece(nextPiece);
-    }
+    saveGame();
   }
 
   function handlePointerMove(ev) {
+    if (state.menuOpen) return;
     if (state.activePointerId !== ev.pointerId || !state.pointerDown) return;
     ev.preventDefault();
 
     const point = canvasPoint(ev);
-    const hit = state.dragOrigin && state.dragOrigin.pieceId != null ? getPiece(state.dragOrigin.pieceId) : null;
+    const hitPiece = state.dragOrigin && state.dragOrigin.pieceId != null ? getPiece(state.dragOrigin.pieceId) : null;
     const threshold = state.activePointerType === 'touch' ? TOUCH_DRAG_THRESHOLD : MOUSE_DRAG_THRESHOLD;
 
-    if (!state.dragStarted && hit && distance({ x: point.x, y: point.y }, state.pointerDown) >= threshold) {
-      beginDragging(hit, state.pointerDown.x, state.pointerDown.y, state.dragOrigin.source, state.activePointerType);
+    if (!state.dragStarted && hitPiece && distance({ x: point.x, y: point.y }, state.pointerDown) >= threshold) {
+      beginDragging(hitPiece, state.pointerDown.x, state.pointerDown.y, state.dragOrigin.source, state.dragOrigin.sourceIndex, state.activePointerType);
     }
 
     if (state.dragStarted && state.draggingId != null) {
@@ -923,39 +970,33 @@
   }
 
   function finishDrag(ev) {
+    if (state.menuOpen) return;
     if (state.activePointerId != null && ev && ev.pointerId !== state.activePointerId) return;
     if (ev) ev.preventDefault();
 
     const wasDragging = state.dragStarted && state.draggingId != null;
-
     if (wasDragging) {
       const piece = getPiece(state.draggingId);
       clearPointerState();
       if (!piece) return;
 
       state.selectedId = piece.id;
-
-      if (!state.preview || state.preview.id !== piece.id) {
-        createPreviewForPiece(piece);
-      }
+      if (!state.preview || state.preview.id !== piece.id) createPreviewForPiece(piece);
 
       if (state.preview.valid) {
         placeSelected();
         return;
       }
-
-      if (recoverIfPieceHasNoPossibleFit(piece, 'That move left the piece with nowhere it could legally go, so it was returned to its last valid spot.')) {
-        return;
-      }
-
-      updateStatus('No room there yet. That piece is still hovering — drag it somewhere open and let go.', true);
+      if (recoverIfPieceHasNoPossibleFit(piece, 'That move stranded the piece, so it was returned to its last valid spot.')) return;
+      updateStatus('No room there yet.', true);
+      saveGame();
       return;
     }
 
     clearPointerState();
   }
 
-  function drawRoundedRect(x, y, w, h, r, fill = null, stroke = null) {
+  function drawRoundedRect(x, y, w, h, r, fill = null, stroke = null, lineWidth = 1) {
     ctx.beginPath();
     ctx.moveTo(x + r, y);
     ctx.arcTo(x + w, y, x + w, y + h, r);
@@ -969,7 +1010,9 @@
     }
     if (stroke) {
       ctx.strokeStyle = stroke;
+      ctx.lineWidth = lineWidth;
       ctx.stroke();
+      ctx.lineWidth = 1;
     }
   }
 
@@ -979,7 +1022,6 @@
     const selected = !!options.selected;
     const outline = options.outline || null;
     const shadow = !!options.shadow;
-
     ctx.save();
     ctx.globalAlpha = alpha;
     if (shadow) {
@@ -987,226 +1029,446 @@
       ctx.shadowBlur = 12;
       ctx.shadowOffsetY = 4;
     }
-
     const stroke = outline || (selected ? 'rgba(255,255,255,0.82)' : (ghost ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.12)'));
-    ctx.lineWidth = outline ? 3 : 1;
-    drawRoundedRect(x + 3, y + 3, size - 6, size - 6, 11, color, stroke);
-    drawRoundedRect(x + 8, y + 8, size - 16, 10, 5, 'rgba(255,255,255,0.15)');
+    drawRoundedRect(x + 3, y + 3, size - 6, size - 6, Math.max(8, size * 0.16), color, stroke, outline ? 3 : 1);
+    drawRoundedRect(x + 8, y + 8, size - 16, Math.max(6, size * 0.18), 6, 'rgba(255,255,255,0.14)');
     ctx.restore();
   }
 
   function drawPieceAt(piece, originX, originY, cellSize, options = {}) {
     const scale = options.scale == null ? 1 : options.scale;
     const b = pieceBounds(piece);
-    const scaledCell = cellSize * scale;
-    const offsetX = ((b.w * cellSize) - (b.w * scaledCell)) / 2;
-    const offsetY = ((b.h * cellSize) - (b.h * scaledCell)) / 2;
+    const scaled = cellSize * scale;
+    const offsetX = ((b.w * cellSize) - (b.w * scaled)) / 2;
+    const offsetY = ((b.h * cellSize) - (b.h * scaled)) / 2;
+    for (const [dx, dy] of piece.cells) {
+      drawCell(originX + offsetX + dx * scaled, originY + offsetY + dy * scaled, scaled, piece.color, options);
+    }
+  }
 
-    for (const cell of piece.cells) {
-      drawCell(originX + offsetX + cell[0] * scaledCell, originY + offsetY + cell[1] * scaledCell, scaledCell, piece.color, options);
+  function drawLabelBox(box, title, subtitle = '') {
+    drawRoundedRect(box.x, box.y, box.w, box.h, 16, '#151c24', 'rgba(255,255,255,0.08)');
+    ctx.fillStyle = '#eef3f8';
+    ctx.font = '700 22px Inter, system-ui, sans-serif';
+    ctx.fillText(title, box.x + 16, box.y + 30);
+    if (subtitle) {
+      ctx.fillStyle = '#9fb0c2';
+      ctx.font = '15px Inter, system-ui, sans-serif';
+      ctx.fillText(subtitle, box.x + 16, box.y + 52);
     }
   }
 
   function drawBoard() {
-    drawRoundedRect(BOARD.x - 8, BOARD.y - 8, BOARD.cols * BOARD.cell + 16, BOARD.rows * BOARD.cell + 16, 16, '#151c24', 'rgba(255,255,255,0.08)');
+    const rect = boardRect();
+    drawRoundedRect(rect.x - 8, rect.y - 8, rect.w + 16, rect.h + 16, 16, '#151c24', 'rgba(255,255,255,0.08)');
 
     const occ = occupiedMap();
-    for (let y = 0; y < BOARD.rows; y++) {
-      for (let x = 0; x < BOARD.cols; x++) {
-        const px = BOARD.x + x * BOARD.cell;
-        const py = BOARD.y + y * BOARD.cell;
-        const occupied = occ.has(String(x) + ',' + String(y));
-        const tint = occupied
-          ? 'rgba(255,255,255,0.07)'
-          : ((x + y) % 2 === 0 ? 'rgba(255,255,255,0.028)' : 'rgba(255,255,255,0.04)');
-        drawRoundedRect(px + 1, py + 1, BOARD.cell - 2, BOARD.cell - 2, 9, tint, 'rgba(255,255,255,0.05)');
+    for (let y = 0; y < state.config.rows; y++) {
+      for (let x = 0; x < state.config.cols; x++) {
+        const px = layout.board.x + x * layout.board.cell;
+        const py = layout.board.y + y * layout.board.cell;
+        const occupied = occ.has(`${x},${y}`);
+        const tint = occupied ? 'rgba(255,255,255,0.07)' : ((x + y) % 2 === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.045)');
+        drawRoundedRect(px + 1, py + 1, layout.board.cell - 2, layout.board.cell - 2, 10, tint, 'rgba(255,255,255,0.05)');
       }
     }
 
     for (const piece of state.pieces) {
-      const showingAsPreview = state.preview && state.preview.id === piece.id;
-      const previewMatchesPlaced = showingAsPreview && piece.placed &&
-        state.preview.gx === piece.gx && state.preview.gy === piece.gy;
+      const showingPreview = state.preview && state.preview.id === piece.id;
+      const previewMatchesPlaced = showingPreview && piece.placed && state.preview.gx === piece.gx && state.preview.gy === piece.gy;
       if (!piece.placed) continue;
       if (state.draggingId === piece.id) continue;
-      if (showingAsPreview && piece.id === state.selectedId && !previewMatchesPlaced) continue;
+      if (showingPreview && piece.id === state.selectedId && !previewMatchesPlaced) continue;
 
-      drawPieceAt(piece, BOARD.x + piece.gx * BOARD.cell, BOARD.y + piece.gy * BOARD.cell, BOARD.cell, {
+      drawPieceAt(piece, layout.board.x + piece.gx * layout.board.cell, layout.board.y + piece.gy * layout.board.cell, layout.board.cell, {
         selected: piece.id === state.selectedId,
         shadow: piece.id === state.selectedId,
-        scale: piece.id === state.selectedId ? 1.07 : 1,
+        scale: piece.id === state.selectedId ? 1.06 : 1,
       });
     }
 
     if (state.preview) {
       const piece = getPiece(state.preview.id);
       if (piece) {
-        const previewOutline = state.preview.valid ? 'rgba(34,197,94,0.95)' : 'rgba(239,68,68,0.95)';
-        drawPieceAt(piece, BOARD.x + state.preview.gx * BOARD.cell, BOARD.y + state.preview.gy * BOARD.cell, BOARD.cell, {
+        const outline = state.preview.valid ? 'rgba(34,197,94,0.95)' : 'rgba(239,68,68,0.95)';
+        drawPieceAt(piece, layout.board.x + state.preview.gx * layout.board.cell, layout.board.y + state.preview.gy * layout.board.cell, layout.board.cell, {
           alpha: 0.92,
           ghost: true,
           selected: piece.id === state.selectedId,
-          outline: previewOutline,
+          outline,
           shadow: true,
           scale: piece.id === state.selectedId ? 1.1 : 1.03,
         });
-
-        if (!state.preview.valid) {
-          ctx.save();
-          ctx.globalAlpha = 0.16;
-          for (const cell of piece.cells) {
-            const x = state.preview.gx + cell[0];
-            const y = state.preview.gy + cell[1];
-            if (!isCellInsideBoard(x, y)) continue;
-            const px = BOARD.x + x * BOARD.cell;
-            const py = BOARD.y + y * BOARD.cell;
-            drawRoundedRect(px + 6, py + 6, BOARD.cell - 12, BOARD.cell - 12, 9, '#ef4444');
-          }
-          ctx.restore();
-        }
       }
     }
-  }
 
-  function drawBox(box, title, subtitle = '') {
-    drawRoundedRect(box.x, box.y, box.w, box.h, 16, '#151c24', 'rgba(255,255,255,0.08)');
-    ctx.fillStyle = '#eef3f8';
-    ctx.font = '700 20px Inter, system-ui, sans-serif';
-    ctx.fillText(title, box.x + 14, box.y + 28);
-    if (subtitle) {
-      ctx.fillStyle = '#9fb0c2';
-      ctx.font = '14px Inter, system-ui, sans-serif';
-      ctx.fillText(subtitle, box.x + 14, box.y + 48);
+    if (state.solved || state.sparkle > 0) {
+      if (state.sparkle > 0) state.sparkle--;
+      const pulse = 0.25 + 0.15 * Math.sin((120 - state.sparkle) * 0.18);
+      ctx.save();
+      ctx.globalAlpha = pulse;
+      drawRoundedRect(rect.x - 12, rect.y - 12, rect.w + 24, rect.h + 24, 18, null, '#86efac', 6);
+      ctx.restore();
     }
   }
 
-  function shouldShowLoosePiece(id) {
-    if (id == null) return false;
-    const piece = getPiece(id);
-    if (!piece) return false;
-    if (state.preview && state.preview.id === id) return false;
-    if (state.draggingId === id) return false;
-    return !piece.placed;
-  }
-
-  function drawSidePanels() {
-    drawBox(CURRENT_BOX, 'Current Piece');
-    drawBox(HOLD_BOX, 'Hold Slot', 'Any selected piece can go here, even one you already placed.');
-    drawBox(QUEUE_BOX, 'Incoming', String(state.queue.length) + ' piece' + (state.queue.length === 1 ? '' : 's') + ' left after this one.');
-    drawBox(MSG_BOX, 'Tips', 'Tap to select. Drag to move. Release to place if it fits.');
-
-    if (shouldShowLoosePiece(state.currentId)) {
-      const current = getPiece(state.currentId);
-      const rect = pieceScreenRect(current, 'current');
-      drawPieceAt(current, rect.x, rect.y, rect.size, {
-        selected: state.selectedId === current.id,
-        shadow: state.selectedId === current.id,
-        scale: state.selectedId === current.id ? 1.14 : 1,
-      });
-    } else if (state.currentId == null) {
+  function drawSide() {
+    drawLabelBox(layout.currentBox, 'Current');
+    if (state.currentId != null) {
+      const piece = getPiece(state.currentId);
+      if (piece && !piece.placed && !(state.preview && state.preview.id === piece.id)) {
+        const r = pieceMiniRect(piece, layout.currentBox);
+        drawPieceAt(piece, r.x, r.y, r.size, {
+          selected: state.selectedId === piece.id,
+          shadow: state.selectedId === piece.id,
+          scale: state.selectedId === piece.id ? 1.12 : 1,
+        });
+      } else if (piece && !piece.placed && state.preview && state.preview.id === piece.id) {
+        ctx.fillStyle = '#9fb0c2';
+        ctx.font = '15px Inter, system-ui, sans-serif';
+        ctx.fillText('Selected', layout.currentBox.x + 16, layout.currentBox.y + 88);
+      }
+    } else {
       ctx.fillStyle = '#9fb0c2';
       ctx.font = '15px Inter, system-ui, sans-serif';
-      ctx.fillText('No loose piece right now.', CURRENT_BOX.x + 16, CURRENT_BOX.y + 84);
+      ctx.fillText('Done', layout.currentBox.x + 16, layout.currentBox.y + 88);
     }
 
-    if (shouldShowLoosePiece(state.holdId)) {
-      const held = getPiece(state.holdId);
-      const rect = pieceScreenRect(held, 'hold');
-      drawPieceAt(held, rect.x, rect.y, rect.size, {
-        alpha: 0.95,
-        selected: state.selectedId === held.id,
-        shadow: state.selectedId === held.id,
-        scale: state.selectedId === held.id ? 1.14 : 1,
-      });
-    } else if (state.holdId == null) {
-      ctx.fillStyle = '#9fb0c2';
-      ctx.font = '15px Inter, system-ui, sans-serif';
-      ctx.fillText('Empty.', HOLD_BOX.x + 16, HOLD_BOX.y + 84);
-    }
-
-    const previewQueue = state.queue.slice(0, 6);
-    previewQueue.forEach((id, idx) => {
+    for (let i = 0; i < layout.holdBoxes.length; i++) {
+      const box = layout.holdBoxes[i];
+      drawLabelBox(box, `Hold ${i + 1}`);
+      const id = state.holdIds[i];
+      if (id == null) {
+        ctx.fillStyle = '#9fb0c2';
+        ctx.font = '15px Inter, system-ui, sans-serif';
+        ctx.fillText('Empty', box.x + 16, box.y + 82);
+        continue;
+      }
       const piece = getPiece(id);
-      if (!piece) return;
-      const size = 18;
-      const baseY = QUEUE_BOX.y + 60 + idx * 44;
-      const b = pieceBounds(piece);
-      const x = QUEUE_BOX.x + 22;
-      const y = baseY + (24 - b.h * size) / 2;
-      drawPieceAt(piece, x, y, size, { alpha: 0.9 });
-      ctx.fillStyle = '#9fb0c2';
-      ctx.font = '14px Inter, system-ui, sans-serif';
-      ctx.fillText(piece.type + ' piece', QUEUE_BOX.x + 100, baseY + 18);
-    });
-
-    const bullets = [
-      'Tap a piece once to select it.',
-      'Drag after a short movement to start moving it.',
-      'Placed pieces clear their old cells while moving.',
-      'Release a green preview to place it.',
-    ];
-    ctx.fillStyle = '#cbd5e1';
-    ctx.font = '15px Inter, system-ui, sans-serif';
-    bullets.forEach((t, i) => ctx.fillText('• ' + t, MSG_BOX.x + 16, MSG_BOX.y + 64 + i * 28));
-  }
-
-  function drawSolvedGlow() {
-    if (!state.solved && state.sparkle <= 0) return;
-    if (state.sparkle > 0) state.sparkle--;
-    const pulse = 0.25 + 0.15 * Math.sin((120 - state.sparkle) * 0.18);
-    ctx.save();
-    ctx.globalAlpha = pulse;
-    ctx.lineWidth = 6;
-    drawRoundedRect(BOARD.x - 12, BOARD.y - 12, BOARD.cols * BOARD.cell + 24, BOARD.rows * BOARD.cell + 24, 18, null, '#86efac');
-    ctx.restore();
+      if (!piece) continue;
+      if (state.preview && state.preview.id === piece.id) {
+        ctx.fillStyle = '#9fb0c2';
+        ctx.font = '15px Inter, system-ui, sans-serif';
+        ctx.fillText('Selected', box.x + 16, box.y + 82);
+        continue;
+      }
+      const r = pieceMiniRect(piece, box);
+      drawPieceAt(piece, r.x, r.y, r.size, {
+        selected: state.selectedId === piece.id,
+        shadow: state.selectedId === piece.id,
+        scale: state.selectedId === piece.id ? 1.12 : 1,
+      });
+    }
   }
 
   function render() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawBoard();
-    drawSidePanels();
-    drawSolvedGlow();
+    drawSide();
     requestAnimationFrame(render);
   }
 
   function bindClick(btn, fn) {
-    if (!btn) return;
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       fn();
     });
   }
 
+  function serializeState() {
+    return {
+      version: 2,
+      config: state.config,
+      pieces: state.pieces.map(p => ({
+        id: p.id,
+        type: p.type,
+        rot: p.rot,
+        gx: p.gx,
+        gy: p.gy,
+        placed: p.placed,
+        color: p.color,
+        lastPlaced: p.lastPlaced,
+      })),
+      queue: [...state.queue],
+      currentId: state.currentId,
+      holdIds: [...state.holdIds],
+      selectedId: state.selectedId,
+      preview: state.preview ? { ...state.preview } : null,
+      solved: state.solved,
+      sparkle: state.sparkle,
+    };
+  }
+
+  function hasSavedGame() {
+    try {
+      return !!(localStorage.getItem(SAVE_KEY) || localStorage.getItem(LEGACY_SAVE_KEY));
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function saveGame(flush = false) {
+    if (!state.pieces.length) return;
+
+    if (!flush) {
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => saveGame(true), SAVE_DEBOUNCE_MS);
+      return;
+    }
+
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+      saveTimer = null;
+    }
+
+    try {
+      const payload = JSON.stringify(serializeState());
+      localStorage.setItem(SAVE_KEY, payload);
+      localStorage.setItem(SAVE_META_KEY, JSON.stringify({
+        version: 2,
+        updatedAt: Date.now(),
+        config: state.config,
+        solved: state.solved,
+      }));
+      localStorage.removeItem(LEGACY_SAVE_KEY);
+    } catch (err) {}
+  }
+
+  function flushSave() {
+    saveGame(true);
+  }
+
+  function applyLoadedSave(save) {
+    state.config = {
+      cols: save.config.cols,
+      rows: save.config.rows,
+      difficulty: save.config.difficulty,
+      holdSlots: holdsForDifficulty(save.config.difficulty),
+    };
+    computeLayout();
+    state.pieces = save.pieces.map(p => ({
+      id: p.id,
+      type: p.type,
+      rot: p.rot,
+      cells: shapeFor(p.type, p.rot),
+      gx: p.gx,
+      gy: p.gy,
+      placed: p.placed,
+      lastPlaced: p.lastPlaced || null,
+      color: p.color,
+    }));
+    state.queue = Array.isArray(save.queue) ? [...save.queue] : [];
+    state.currentId = save.currentId;
+    state.holdIds = Array.isArray(save.holdIds) ? save.holdIds.slice(0, state.config.holdSlots) : Array(state.config.holdSlots).fill(null);
+    while (state.holdIds.length < state.config.holdSlots) state.holdIds.push(null);
+    state.selectedId = save.selectedId;
+    state.preview = save.preview ? { ...save.preview } : null;
+    state.draggingId = null;
+    state.dragOrigin = null;
+    state.activePointerId = null;
+    state.pointerDown = null;
+    state.dragStarted = false;
+    state.solved = !!save.solved;
+    state.sparkle = save.sparkle || 0;
+    state.menuOpen = false;
+    updateGameTag();
+    syncMenuFromState();
+    updateStatus(state.solved ? 'Solved.' : 'Loaded.');
+  }
+
+  function loadSavedGame() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY) || localStorage.getItem(LEGACY_SAVE_KEY);
+      if (!raw) return false;
+      const save = JSON.parse(raw);
+      if (!save || !save.config || !Array.isArray(save.pieces)) return false;
+      if (save.version !== 1 && save.version !== 2) return false;
+      applyLoadedSave(save);
+      saveGame(true);
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  function clearSavedGame() {
+    if (saveTimer) {
+      clearTimeout(saveTimer);
+      saveTimer = null;
+    }
+    try {
+      localStorage.removeItem(SAVE_KEY);
+      localStorage.removeItem(SAVE_META_KEY);
+      localStorage.removeItem(LEGACY_SAVE_KEY);
+    } catch (err) {}
+  }
+
+  function countEmptyRegionsDivisibleBy4(occupied, cols, rows) {
+    const empty = new Set();
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        const key = `${x},${y}`;
+        if (!occupied.has(key)) empty.add(key);
+      }
+    }
+
+    const seen = new Set();
+    for (const key of empty) {
+      if (seen.has(key)) continue;
+      const stack = [key];
+      seen.add(key);
+      let count = 0;
+      while (stack.length) {
+        const cur = stack.pop();
+        count++;
+        const [x, y] = cur.split(',').map(Number);
+        const neigh = [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]];
+        for (const [nx, ny] of neigh) {
+          if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+          const nKey = `${nx},${ny}`;
+          if (!empty.has(nKey) || seen.has(nKey)) continue;
+          seen.add(nKey);
+          stack.push(nKey);
+        }
+      }
+      if (count % 4 !== 0) return false;
+    }
+    return true;
+  }
+
+  function generateTiling(cols, rows) {
+    const shapeEntries = Object.entries(uniqueRotations).flatMap(([type, rots]) => rots.map((cells, idx) => ({ type, cells, idx })));
+
+    function firstEmpty(occupied) {
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          const key = `${x},${y}`;
+          if (!occupied.has(key)) return { x, y };
+        }
+      }
+      return null;
+    }
+
+    function candidatesFor(anchor, occupied) {
+      const entries = shuffle(shapeEntries);
+      const candidates = [];
+      for (const entry of entries) {
+        const rots = entry.cells;
+        for (const [ax, ay] of rots) {
+          const tx = anchor.x - ax;
+          const ty = anchor.y - ay;
+          const placed = rots.map(([x, y]) => [tx + x, ty + y]);
+          if (placed.every(([x, y]) => x >= 0 && y >= 0 && x < cols && y < rows && !occupied.has(`${x},${y}`))) {
+            candidates.push({ type: entry.type, placed });
+          }
+        }
+      }
+      return shuffle(candidates);
+    }
+
+    function backtrack(occupied, placements) {
+      if (occupied.size === cols * rows) return placements;
+      const anchor = firstEmpty(occupied);
+      const candidates = candidatesFor(anchor, occupied);
+      for (const candidate of candidates) {
+        const next = new Set(occupied);
+        for (const [x, y] of candidate.placed) next.add(`${x},${y}`);
+        if (!countEmptyRegionsDivisibleBy4(next, cols, rows)) continue;
+        const result = backtrack(next, placements.concat(candidate));
+        if (result) return result;
+      }
+      return null;
+    }
+
+    for (let tries = 0; tries < 50; tries++) {
+      const result = backtrack(new Set(), []);
+      if (result) return result;
+    }
+    throw new Error('Failed to generate puzzle.');
+  }
+
+  function buildNewGame(cols, rows, difficulty) {
+    state.config = { cols, rows, difficulty, holdSlots: holdsForDifficulty(difficulty) };
+    computeLayout();
+
+    const tiling = generateTiling(cols, rows);
+    const order = shuffle(tiling.map((_, i) => i));
+
+    state.pieces = tiling.map((placement, i) => {
+      const startRot = randInt(4);
+      return {
+        id: i,
+        type: placement.type,
+        rot: startRot,
+        cells: shapeFor(placement.type, startRot),
+        gx: null,
+        gy: null,
+        placed: false,
+        lastPlaced: null,
+        color: COLORS[i % COLORS.length],
+      };
+    });
+
+    state.queue = order;
+    state.currentId = state.queue.shift() ?? null;
+    state.holdIds = Array(state.config.holdSlots).fill(null);
+    state.selectedId = state.currentId;
+    state.preview = null;
+    clearPointerState();
+    state.solved = false;
+    state.sparkle = 0;
+    state.menuOpen = false;
+    updateGameTag();
+    syncMenuFromState();
+    updateStatus('Ready.');
+    saveGame();
+  }
+
+  function openMenu() {
+    state.menuOpen = true;
+    menuOverlay.classList.add('open');
+    const hasSave = hasSavedGame();
+    continueBtn.style.display = hasSave ? '' : 'none';
+    menuActions.className = `menu-actions${hasSave ? '' : ' single'}`;
+    saveNote.textContent = hasSave ? 'Your progress auto-saves and reloads after refresh.' : 'Start a new game.';
+  }
+
+  function closeMenu() {
+    state.menuOpen = false;
+    menuOverlay.classList.remove('open');
+  }
+
+  function startFromMenu() {
+    const [cols, rows] = sizeSelect.value.split('x').map(Number);
+    const difficulty = difficultySelect.value;
+    clearSavedGame();
+    buildNewGame(cols, rows, difficulty);
+    closeMenu();
+  }
+
+  function continueSaved() {
+    if (loadSavedGame()) {
+      closeMenu();
+    } else {
+      startFromMenu();
+    }
+  }
+
   bindClick(rotLeftBtn, () => rotatePiece(-1));
   bindClick(rotRightBtn, () => rotatePiece(1));
   bindClick(holdBtn, holdCurrent);
-  bindClick(placeBtn, placeSelected);
-  bindClick(newBtn, buildPuzzle);
-
-  bindClick(mRotLeftBtn, () => rotatePiece(-1));
-  bindClick(mRotRightBtn, () => rotatePiece(1));
-  bindClick(mHoldBtn, holdCurrent);
-  bindClick(mPlaceBtn, placeSelected);
-  bindClick(mNewBtn, buildPuzzle);
+  bindClick(menuBtn, openMenu);
+  bindClick(startBtn, startFromMenu);
+  bindClick(continueBtn, continueSaved);
 
   window.addEventListener('keydown', (e) => {
+    if (state.menuOpen && e.key !== 'Escape') return;
     const k = e.key.toLowerCase();
-    if (k === 'r' || k === 'q') {
-      e.preventDefault();
-      rotatePiece(-1);
-    } else if (k === 'e') {
-      e.preventDefault();
-      rotatePiece(1);
-    } else if (k === 'h') {
-      e.preventDefault();
-      holdCurrent();
-    } else if (k === 'n') {
-      e.preventDefault();
-      buildPuzzle();
-    } else if (k === 'enter' || k === ' ') {
-      e.preventDefault();
-      placeSelected();
-    }
+    if (k === 'q' || k === 'r') { e.preventDefault(); rotatePiece(-1); }
+    else if (k === 'e') { e.preventDefault(); rotatePiece(1); }
+    else if (k === 'h') { e.preventDefault(); holdCurrent(); }
+    else if (k === 'm' || k === 'n') { e.preventDefault(); openMenu(); }
+    else if (k === 'escape') { e.preventDefault(); if (state.menuOpen) closeMenu(); else openMenu(); }
   });
 
   canvas.addEventListener('pointerdown', handlePointerDown, { passive: false });
@@ -1215,51 +1477,20 @@
   canvas.addEventListener('pointercancel', finishDrag, { passive: false });
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
-  function buildPuzzle() {
-    state.pieces = [];
-    state.queue = [];
-    state.holdId = null;
-    state.currentId = null;
-    state.selectedId = null;
-    state.draggingId = null;
-    state.preview = null;
-    state.dragOrigin = null;
-    state.activePointerId = null;
-    state.pointerDown = null;
-    state.dragStarted = false;
-    state.solved = false;
-    state.sparkle = 0;
+  window.addEventListener('pagehide', flushSave);
+  window.addEventListener('beforeunload', flushSave);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushSave();
+  });
 
-    const layout = shuffle(PUZZLES)[0];
-    const order = shuffle([...layout.keys()]);
-
-    layout.forEach((entry, i) => {
-      const type = entry[0];
-      const rot = entry[1];
-      state.pieces.push({
-        id: i,
-        type,
-        rot,
-        cells: shapeFor(type, rot),
-        gx: null,
-        gy: null,
-        placed: false,
-        lastPlaced: null,
-        color: COLORS[i % COLORS.length],
-      });
-    });
-
-    state.queue = order;
-    state.currentId = state.queue.shift();
-    state.selectedId = state.currentId;
-    state.preview = null;
-    updateStatus('Pick up a piece and fill the board.');
+  computeLayout();
+  if (loadSavedGame()) {
+    closeMenu();
+  } else {
+    openMenu();
   }
-
-  buildPuzzle();
   render();
 })();
 </script>
-
 </body>
 </html>
