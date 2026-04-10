@@ -397,13 +397,18 @@
 
     const origin = pieceHome(piece);
     if (state.draggingId !== piece.id) {
-      if (origin === 'board') createPreviewForPiece(piece);
-      else if (state.preview && state.preview.id === piece.id && !piece.placed) state.preview = null;
+      if (origin === 'board') {
+        createPreviewForPiece(piece);
+      } else {
+        const hasOwnFloatingPreview = !!(state.preview && state.preview.id === piece.id && !piece.placed);
+        if (!hasOwnFloatingPreview) state.preview = null;
+      }
     }
+
     if (fromTap) {
       if (origin === 'board') updateStatus('Piece selected. Drag it to move it, or tap a valid preview to place.');
       else if (origin === 'hold') updateStatus('Held piece selected. Drag it onto the board or press Hold to swap it.');
-      else updateStatus('Piece selected. Drag it onto the board. Tap the preview again to place.');
+      else updateStatus('Piece selected. Drag it onto the board. Let go to place it if it fits.');
     } else {
       if (origin === 'board') updateStatus('Piece selected. Drag it to a new spot, rotate it, then place it.');
       else if (origin === 'hold') updateStatus('Held piece selected. Drag it onto the board or press Hold to swap it.');
@@ -686,7 +691,16 @@
   function findHitTarget(x, y) {
     if (state.selectedId != null && state.preview) {
       const previewPiece = getPiece(state.selectedId);
-      if (previewPiece && pieceHitTest(previewPiece, x, y, 'preview')) return { piece: previewPiece, source: 'preview' };
+      const previewMatchesPlaced = !!(
+        previewPiece &&
+        previewPiece.placed &&
+        state.preview.id === previewPiece.id &&
+        state.preview.gx === previewPiece.gx &&
+        state.preview.gy === previewPiece.gy
+      );
+      if (previewPiece && !previewMatchesPlaced && pieceHitTest(previewPiece, x, y, 'preview')) {
+        return { piece: previewPiece, source: 'preview' };
+      }
     }
 
     for (let i = state.pieces.length - 1; i >= 0; i--) {
