@@ -1022,6 +1022,15 @@
     const selected = !!options.selected;
     const outline = options.outline || null;
     const shadow = !!options.shadow;
+    const edges = options.edges || { top: true, right: true, bottom: true, left: true };
+
+    const inset = Math.max(0, size * 0.02);
+    const s = size - inset * 2;
+    const ox = x + inset;
+    const oy = y + inset;
+    const stroke = outline || (selected ? 'rgba(255,255,255,0.92)' : (ghost ? 'rgba(255,255,255,0.28)' : 'rgba(15,23,42,0.72)'));
+    const line = outline ? 3 : Math.max(2, size * 0.045);
+
     ctx.save();
     ctx.globalAlpha = alpha;
     if (shadow) {
@@ -1029,9 +1038,55 @@
       ctx.shadowBlur = 12;
       ctx.shadowOffsetY = 4;
     }
-    const stroke = outline || (selected ? 'rgba(255,255,255,0.82)' : (ghost ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.12)'));
-    drawRoundedRect(x + 3, y + 3, size - 6, size - 6, Math.max(8, size * 0.16), color, stroke, outline ? 3 : 1);
-    drawRoundedRect(x + 8, y + 8, size - 16, Math.max(6, size * 0.18), 6, 'rgba(255,255,255,0.14)');
+
+    // Main connected body with hard corners.
+    ctx.fillStyle = color;
+    ctx.fillRect(ox, oy, s, s);
+
+    // Faceted top face.
+    const facetH = Math.max(6, s * 0.28);
+    const facetInset = Math.max(4, s * 0.12);
+    ctx.beginPath();
+    ctx.moveTo(ox + facetInset, oy + facetInset);
+    ctx.lineTo(ox + s - facetInset, oy + facetInset);
+    ctx.lineTo(ox + s - facetInset * 1.6, oy + facetH);
+    ctx.lineTo(ox + facetInset * 1.6, oy + facetH);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(255,255,255,0.20)';
+    ctx.fill();
+
+    // Small angled sheen to make the top feel cut/faceted.
+    ctx.beginPath();
+    ctx.moveTo(ox + facetInset * 1.15, oy + facetInset * 1.1);
+    ctx.lineTo(ox + s * 0.46, oy + facetInset * 1.1);
+    ctx.lineTo(ox + s * 0.34, oy + facetH * 0.82);
+    ctx.lineTo(ox + facetInset * 1.7, oy + facetH * 0.82);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.fill();
+
+    // Slight lower shade for depth.
+    ctx.fillStyle = 'rgba(0,0,0,0.10)';
+    ctx.fillRect(ox, oy + s * 0.66, s, s * 0.34);
+
+    // Outer outline only on exposed edges so cells read as a single connected shape.
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = line;
+    ctx.beginPath();
+    if (edges.top) { ctx.moveTo(ox, oy); ctx.lineTo(ox + s, oy); }
+    if (edges.right) { ctx.moveTo(ox + s, oy); ctx.lineTo(ox + s, oy + s); }
+    if (edges.bottom) { ctx.moveTo(ox + s, oy + s); ctx.lineTo(ox, oy + s); }
+    if (edges.left) { ctx.moveTo(ox, oy + s); ctx.lineTo(ox, oy); }
+    ctx.stroke();
+
+    // Crisp corners to help contrast.
+    const corner = Math.max(2, line * 0.95);
+    ctx.fillStyle = stroke;
+    if (edges.top || edges.left) ctx.fillRect(ox - corner / 2, oy - corner / 2, corner, corner);
+    if (edges.top || edges.right) ctx.fillRect(ox + s - corner / 2, oy - corner / 2, corner, corner);
+    if (edges.bottom || edges.left) ctx.fillRect(ox - corner / 2, oy + s - corner / 2, corner, corner);
+    if (edges.bottom || edges.right) ctx.fillRect(ox + s - corner / 2, oy + s - corner / 2, corner, corner);
+
     ctx.restore();
   }
 
@@ -1041,8 +1096,25 @@
     const scaled = cellSize * scale;
     const offsetX = ((b.w * cellSize) - (b.w * scaled)) / 2;
     const offsetY = ((b.h * cellSize) - (b.h * scaled)) / 2;
+
+    const cellSet = new Set(piece.cells.map(([dx, dy]) => `${dx},${dy}`));
+
     for (const [dx, dy] of piece.cells) {
-      drawCell(originX + offsetX + dx * scaled, originY + offsetY + dy * scaled, scaled, piece.color, options);
+      drawCell(
+        originX + offsetX + dx * scaled,
+        originY + offsetY + dy * scaled,
+        scaled,
+        piece.color,
+        {
+          ...options,
+          edges: {
+            top: !cellSet.has(`${dx},${dy - 1}`),
+            right: !cellSet.has(`${dx + 1},${dy}`),
+            bottom: !cellSet.has(`${dx},${dy + 1}`),
+            left: !cellSet.has(`${dx - 1},${dy}`),
+          }
+        }
+      );
     }
   }
 
