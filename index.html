@@ -392,7 +392,32 @@
     };
   }
 
+  function getFloatingLoosePiece() {
+    if (!state.preview) return null;
+    const piece = getPiece(state.preview.id);
+    if (!piece) return null;
+    return piece.placed ? null : piece;
+  }
+
+  function resolveFloatingLoosePieceBeforeSwitch(nextPieceId = null) {
+    const floating = getFloatingLoosePiece();
+    if (!floating) return true;
+    if (floating.id === nextPieceId) return true;
+
+    state.selectedId = floating.id;
+
+    if (state.preview.valid) {
+      placeSelected();
+      return true;
+    }
+
+    updateStatus('Finish placing the hovering piece first. Drag it somewhere it fits and let go.', true);
+    return false;
+  }
+
   function selectPiece(piece, fromTap = false) {
+    if (!resolveFloatingLoosePieceBeforeSwitch(piece.id)) return false;
+
     state.selectedId = piece.id;
 
     const origin = pieceHome(piece);
@@ -414,6 +439,8 @@
       else if (origin === 'hold') updateStatus('Held piece selected. Drag it onto the board or press Hold to swap it.');
       else updateStatus('Piece selected. Drag it over the grid, rotate it, then place it.');
     }
+
+    return true;
   }
 
   function moveCurrentForward(placedPieceId) {
@@ -548,6 +575,8 @@
       updateStatus('There is no piece selected to hold.', true);
       return;
     }
+
+    if (!resolveFloatingLoosePieceBeforeSwitch(piece.id)) return;
 
     if (piece.placed) removeFromBoard(piece);
     clearPointerState();
@@ -724,6 +753,7 @@
   function tapBoardBehavior(x, y) {
     const piece = getPiece(state.selectedId);
     if (!piece) return false;
+    if (!resolveFloatingLoosePieceBeforeSwitch(piece.id)) return true;
     if (!pointInRect(x, y, boardRect())) return false;
 
     if (!state.preview || state.preview.id !== piece.id) {
@@ -762,8 +792,12 @@
 
     const hit = findHitTarget(point.x, point.y);
     if (hit) {
-      selectPiece(hit.piece, true);
-      state.dragOrigin = { source: hit.source, pieceId: hit.piece.id };
+      const didSelect = selectPiece(hit.piece, true);
+      if (didSelect) {
+        state.dragOrigin = { source: hit.source, pieceId: hit.piece.id };
+      } else {
+        clearPointerState();
+      }
       return;
     }
 
@@ -833,7 +867,7 @@
         return;
       }
 
-      updateStatus('No room there yet. The piece is still hovering — drag it somewhere open and let go.', true);
+      updateStatus('No room there yet. That piece is still hovering — drag it somewhere open and let go.', true);
       return;
     }
 
