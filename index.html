@@ -172,7 +172,7 @@
 
       <div class="section tiny">
         <h2>Rules</h2>
-        Tap any piece to select it. Drag a selected piece onto the grid. If you let go and it fits, it places automatically. If it does not fit, it keeps hovering until you drag it somewhere that does. A green outline fits. A red outline does not. The hold slot stores one piece and can be swapped at any time.
+        Tap any piece to select it. Drag a selected piece onto the grid. If you let go and it fits, it places automatically. If it does not fit, it keeps hovering until you drag it somewhere that does. If a move would leave a picked-up piece with nowhere legal to go, the game returns it to its last valid spot. A green outline fits. A red outline does not. The hold slot stores one piece and can be swapped at any time.
       </div>
     </div>
   </div>
@@ -392,6 +392,74 @@
     };
   }
 
+  function hasAnyFitInCurrentRotation(piece) {
+    for (let y = 0; y < BOARD.rows; y++) {
+      for (let x = 0; x < BOARD.cols; x++) {
+        if (canPlace(piece, x, y, piece.id)) return true;
+      }
+    }
+    return false;
+  }
+
+  function hasAnyFitInAnyRotation(piece) {
+    const originalRot = piece.rot;
+    const originalCells = piece.cells.map(([x, y]) => [x, y]);
+
+    for (let rot = 0; rot < 4; rot++) {
+      piece.rot = rot;
+      piece.cells = shapeFor(piece.type, rot);
+      if (hasAnyFitInCurrentRotation(piece)) {
+        piece.rot = originalRot;
+        piece.cells = originalCells;
+        return true;
+      }
+    }
+
+    piece.rot = originalRot;
+    piece.cells = originalCells;
+    return false;
+  }
+
+  function restorePieceToLastPlaced(piece) {
+    if (!piece.lastPlaced) return false;
+
+    const restoreRot = piece.lastPlaced.rot;
+    const restoreCells = shapeFor(piece.type, restoreRot);
+    const restoreGX = piece.lastPlaced.gx;
+    const restoreGY = piece.lastPlaced.gy;
+
+    const oldRot = piece.rot;
+    const oldCells = piece.cells.map(([x, y]) => [x, y]);
+
+    piece.rot = restoreRot;
+    piece.cells = restoreCells;
+
+    if (!canPlace(piece, restoreGX, restoreGY, piece.id)) {
+      piece.rot = oldRot;
+      piece.cells = oldCells;
+      return false;
+    }
+
+    piece.gx = restoreGX;
+    piece.gy = restoreGY;
+    piece.placed = true;
+    state.selectedId = piece.id;
+    state.preview = { id: piece.id, gx: restoreGX, gy: restoreGY, valid: true };
+    return true;
+  }
+
+  function recoverIfPieceHasNoPossibleFit(piece, reasonText) {
+    if (!piece || piece.placed) return false;
+    if (hasAnyFitInAnyRotation(piece)) return false;
+
+    if (restorePieceToLastPlaced(piece)) {
+      updateStatus(reasonText || 'That move would strand the piece, so it was returned to its last valid spot.', true);
+      return true;
+    }
+
+    return false;
+  }
+
   function getFloatingLoosePiece() {
     if (!state.preview) return null;
     const piece = getPiece(state.preview.id);
@@ -408,6 +476,10 @@
 
     if (state.preview.valid) {
       placeSelected();
+      return true;
+    }
+
+    if (recoverIfPieceHasNoPossibleFit(floating, 'The hovering piece had no legal destination, so it was returned to its last valid spot.')) {
       return true;
     }
 
@@ -465,6 +537,7 @@
     piece.gx = state.preview.gx;
     piece.gy = state.preview.gy;
     piece.placed = true;
+    piece.lastPlaced = { gx: piece.gx, gy: piece.gy, rot: piece.rot };
 
     if (state.holdId === piece.id) state.holdId = null;
     moveCurrentForward(piece.id);
@@ -529,6 +602,10 @@
     } else {
       if (state.preview && state.preview.id === piece.id) createPreviewForPiece(piece);
       else state.preview = null;
+    }
+
+    if (recoverIfPieceHasNoPossibleFit(piece, 'That rotation would leave the piece with nowhere to go, so it was returned to its last valid spot.')) {
+      return;
     }
 
     updateStatus('Rotated piece.');
@@ -867,6 +944,10 @@
         return;
       }
 
+      if (recoverIfPieceHasNoPossibleFit(piece, 'That move left the piece with nowhere it could legally go, so it was returned to its last valid spot.')) {
+        return;
+      }
+
       updateStatus('No room there yet. That piece is still hovering — drag it somewhere open and let go.', true);
       return;
     }
@@ -1163,6 +1244,7 @@
         gx: null,
         gy: null,
         placed: false,
+        lastPlaced: null,
         color: COLORS[i % COLORS.length],
       });
     });
