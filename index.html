@@ -159,9 +159,9 @@
 
       <div class="section">
         <h2>Status</h2>
-        <div id="status">Tap a piece to select it. Drag it to move. Tap the board again to place it.</div>
+        <div id="status">Tap a piece to select it. Drag it to move. Let go to place it if it fits.</div>
         <div class="tiny" style="margin-top:8px;">
-          Phone: tap to select, drag to move, tap a valid preview to place. Keyboard: <span class="accent">Q</span>/<span class="accent">R</span>/<span class="accent">E</span> rotate, <span class="accent">H</span> hold, <span class="accent">Enter</span> place, <span class="accent">N</span> new puzzle.
+          Phone: tap to select, drag to move, release to place if it fits. Keyboard: <span class="accent">Q</span>/<span class="accent">R</span>/<span class="accent">E</span> rotate, <span class="accent">H</span> hold, <span class="accent">Enter</span> place, <span class="accent">N</span> new puzzle.
         </div>
       </div>
 
@@ -172,7 +172,7 @@
 
       <div class="section tiny">
         <h2>Rules</h2>
-        Tap any piece to select it. Drag a selected piece onto the grid. A green outline fits. A red outline does not. Dragging off the board cancels the move. The hold slot stores one piece and can be swapped at any time.
+        Tap any piece to select it. Drag a selected piece onto the grid. If you let go and it fits, it places automatically. If it does not fit, it keeps hovering until you drag it somewhere that does. A green outline fits. A red outline does not. The hold slot stores one piece and can be swapped at any time.
       </div>
     </div>
   </div>
@@ -584,6 +584,9 @@
     if (source === 'board' && piece.placed) {
       originX = BOARD.x + piece.gx * BOARD.cell;
       originY = BOARD.y + piece.gy * BOARD.cell;
+    } else if (source === 'preview' && state.preview && state.preview.id === piece.id) {
+      originX = BOARD.x + state.preview.gx * BOARD.cell;
+      originY = BOARD.y + state.preview.gy * BOARD.cell;
     } else if (source === 'current') {
       const rect = pieceScreenRect(piece, 'current');
       originX = rect.x;
@@ -651,9 +654,11 @@
     const anchor = hitLocalCell(piece, pointerX, pointerY, source) || piece.cells[0];
     state.dragAnchor = { x: anchor.x, y: anchor.y };
 
-    if (source === 'board' && piece.placed) {
+    if ((source === 'board' || source === 'preview') && piece.placed) {
       removeFromBoard(piece);
       createPreviewForPiece(piece, { gx: state.dragOrigin.gx, gy: state.dragOrigin.gy });
+    } else if (source === 'preview' && state.preview && state.preview.id === piece.id) {
+      // Keep the floating preview exactly where it already is.
     } else {
       createPreviewForPiece(piece);
     }
@@ -679,6 +684,11 @@
   }
 
   function findHitTarget(x, y) {
+    if (state.selectedId != null && state.preview) {
+      const previewPiece = getPiece(state.selectedId);
+      if (previewPiece && pieceHitTest(previewPiece, x, y, 'preview')) return { piece: previewPiece, source: 'preview' };
+    }
+
     for (let i = state.pieces.length - 1; i >= 0; i--) {
       const piece = state.pieces[i];
       if (piece.placed && pieceHitTest(piece, x, y, 'board')) return { piece, source: 'board' };
@@ -754,6 +764,14 @@
       }
     }
 
+    const selectedPiece = getPiece(state.selectedId);
+    const selectedIsFloatingLoose = !!(selectedPiece && !selectedPiece.placed && state.preview && state.preview.id === selectedPiece.id);
+
+    if (selectedIsFloatingLoose) {
+      updateStatus('Selected piece is hovering. Drag it somewhere open and let go to place it.', true);
+      return;
+    }
+
     state.selectedId = state.currentId ?? state.holdId ?? null;
     state.preview = null;
     if (state.selectedId != null) {
@@ -784,41 +802,24 @@
     if (ev) ev.preventDefault();
 
     const wasDragging = state.dragStarted && state.draggingId != null;
-    const pointerType = state.activePointerType;
-    const releasePoint = ev ? canvasPoint(ev) : null;
 
     if (wasDragging) {
       const piece = getPiece(state.draggingId);
-      const origin = state.dragOrigin ? { ...state.dragOrigin } : null;
-      const releasedOnBoard = !!(releasePoint && pointInRect(releasePoint.x, releasePoint.y, boardRect()));
-
       clearPointerState();
       if (!piece) return;
 
-      if (!releasedOnBoard) {
-        if (origin && origin.wasPlaced) {
-          piece.placed = true;
-          piece.gx = origin.gx;
-          piece.gy = origin.gy;
-          state.selectedId = piece.id;
-          state.preview = { id: piece.id, gx: piece.gx, gy: piece.gy, valid: true };
-          updateStatus('Move canceled. Piece returned to its previous spot.');
-          return;
-        } else {
-          state.selectedId = piece.id;
-          state.preview = null;
-          updateStatus('Move canceled. Drag the selected piece onto the board.');
-          return;
-        }
+      state.selectedId = piece.id;
+
+      if (!state.preview || state.preview.id !== piece.id) {
+        createPreviewForPiece(piece);
       }
 
-      if (!state.preview || state.preview.id !== piece.id) createPreviewForPiece(piece);
-      updateStatus(
-        state.preview.valid
-          ? (pointerType === 'touch' ? 'Preview set. Tap the preview again to place.' : 'Preview snapped. Rotate it or press Place when ready.')
-          : 'Preview set, but that position does not fit yet.',
-        !(state.preview && state.preview.valid)
-      );
+      if (state.preview.valid) {
+        placeSelected();
+        return;
+      }
+
+      updateStatus('No room there yet. The piece is still hovering — drag it somewhere open and let go.', true);
       return;
     }
 
@@ -866,8 +867,14 @@
   }
 
   function drawPieceAt(piece, originX, originY, cellSize, options = {}) {
+    const scale = options.scale == null ? 1 : options.scale;
+    const b = pieceBounds(piece);
+    const scaledCell = cellSize * scale;
+    const offsetX = ((b.w * cellSize) - (b.w * scaledCell)) / 2;
+    const offsetY = ((b.h * cellSize) - (b.h * scaledCell)) / 2;
+
     for (const cell of piece.cells) {
-      drawCell(originX + cell[0] * cellSize, originY + cell[1] * cellSize, cellSize, piece.color, options);
+      drawCell(originX + offsetX + cell[0] * scaledCell, originY + offsetY + cell[1] * scaledCell, scaledCell, piece.color, options);
     }
   }
 
@@ -897,6 +904,8 @@
 
       drawPieceAt(piece, BOARD.x + piece.gx * BOARD.cell, BOARD.y + piece.gy * BOARD.cell, BOARD.cell, {
         selected: piece.id === state.selectedId,
+        shadow: piece.id === state.selectedId,
+        scale: piece.id === state.selectedId ? 1.07 : 1,
       });
     }
 
@@ -910,6 +919,7 @@
           selected: piece.id === state.selectedId,
           outline: previewOutline,
           shadow: true,
+          scale: piece.id === state.selectedId ? 1.1 : 1.03,
         });
 
         if (!state.preview.valid) {
@@ -954,13 +964,15 @@
     drawBox(CURRENT_BOX, 'Current Piece');
     drawBox(HOLD_BOX, 'Hold Slot', 'Any selected piece can go here, even one you already placed.');
     drawBox(QUEUE_BOX, 'Incoming', String(state.queue.length) + ' piece' + (state.queue.length === 1 ? '' : 's') + ' left after this one.');
-    drawBox(MSG_BOX, 'Tips', 'Tap to select. Drag to move. Tap valid preview to place.');
+    drawBox(MSG_BOX, 'Tips', 'Tap to select. Drag to move. Release to place if it fits.');
 
     if (shouldShowLoosePiece(state.currentId)) {
       const current = getPiece(state.currentId);
       const rect = pieceScreenRect(current, 'current');
       drawPieceAt(current, rect.x, rect.y, rect.size, {
         selected: state.selectedId === current.id,
+        shadow: state.selectedId === current.id,
+        scale: state.selectedId === current.id ? 1.14 : 1,
       });
     } else if (state.currentId == null) {
       ctx.fillStyle = '#9fb0c2';
@@ -974,6 +986,8 @@
       drawPieceAt(held, rect.x, rect.y, rect.size, {
         alpha: 0.95,
         selected: state.selectedId === held.id,
+        shadow: state.selectedId === held.id,
+        scale: state.selectedId === held.id ? 1.14 : 1,
       });
     } else if (state.holdId == null) {
       ctx.fillStyle = '#9fb0c2';
@@ -1000,7 +1014,7 @@
       'Tap a piece once to select it.',
       'Drag after a short movement to start moving it.',
       'Placed pieces clear their old cells while moving.',
-      'Tap a green preview to place it.',
+      'Release a green preview to place it.',
     ];
     ctx.fillStyle = '#cbd5e1';
     ctx.font = '15px Inter, system-ui, sans-serif';
